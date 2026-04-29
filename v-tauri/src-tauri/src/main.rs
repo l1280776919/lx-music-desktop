@@ -28,6 +28,10 @@ fn list_store_path() -> Result<PathBuf, String> {
   Ok(config_root_dir()?.join("my_list.json"))
 }
 
+fn theme_store_path() -> Result<PathBuf, String> {
+  Ok(config_root_dir()?.join("themes.json"))
+}
+
 fn app_setting_path() -> Result<PathBuf, String> {
   Ok(config_root_dir()?.join("app_setting.json"))
 }
@@ -50,6 +54,53 @@ fn save_data_store(store: &Map<String, Value>) -> Result<(), String> {
   std::fs::create_dir_all(&root).map_err(|e| e.to_string())?;
   let path = data_store_path()?;
   let bytes = serde_json::to_vec_pretty(&Value::Object(store.clone())).map_err(|e| e.to_string())?;
+  std::fs::write(path, bytes).map_err(|e| e.to_string())?;
+  Ok(())
+}
+
+fn ensure_object(value: Value) -> Map<String, Value> {
+  match value {
+    Value::Object(obj) => obj,
+    _ => Map::new(),
+  }
+}
+
+fn ensure_array(value: Value) -> Vec<Value> {
+  match value {
+    Value::Array(arr) => arr,
+    _ => vec![],
+  }
+}
+
+fn default_lyric_info() -> Value {
+  serde_json::json!({
+    "lyric": "",
+    "tlyric": null,
+    "rlyric": null,
+    "lxlyric": null
+  })
+}
+
+#[derive(Clone, Serialize, Deserialize, Default)]
+struct ThemeStore {
+  #[serde(default)]
+  userThemes: Vec<Value>,
+}
+
+fn load_theme_store() -> Result<ThemeStore, String> {
+  let path = theme_store_path()?;
+  if !path.exists() {
+    return Ok(ThemeStore::default());
+  }
+  let bytes = std::fs::read(&path).map_err(|e| e.to_string())?;
+  serde_json::from_slice::<ThemeStore>(&bytes).map_err(|e| e.to_string())
+}
+
+fn save_theme_store(store: &ThemeStore) -> Result<(), String> {
+  let root = config_root_dir()?;
+  std::fs::create_dir_all(&root).map_err(|e| e.to_string())?;
+  let path = theme_store_path()?;
+  let bytes = serde_json::to_vec_pretty(store).map_err(|e| e.to_string())?;
   std::fs::write(path, bytes).map_err(|e| e.to_string())?;
   Ok(())
 }
@@ -163,6 +214,9 @@ fn lx_ipc_invoke(window: tauri::Window, channel: String, params: Option<Value>) 
         (Value::Object(base_obj), Value::Object(patch_obj)) => {
           merge_object(base_obj, &patch_obj);
           save_app_setting(&Value::Object(base_obj.clone()))?;
+          window
+            .emit("winMain_on_config_change", Value::Object(patch_obj.clone()))
+            .map_err(|e| e.to_string())?;
           Ok(Value::Null)
         }
         _ => Ok(Value::Null),
@@ -189,15 +243,210 @@ fn lx_ipc_invoke(window: tauri::Window, channel: String, params: Option<Value>) 
     (Some("winMain"), "get_user_api_list") | (None, "get_user_api_list") => Ok(Value::Array(vec![])),
     (Some("winMain"), "get_other_source") | (None, "get_other_source") => Ok(Value::Array(vec![])),
     (Some("winMain"), "get_other_source_count") | (None, "get_other_source_count") => Ok(Value::from(0)),
-    (Some("winMain"), "get_music_url_count") | (None, "get_music_url_count") => Ok(Value::from(0)),
-    (Some("winMain"), "get_lyric_raw_count") | (None, "get_lyric_raw_count") => Ok(Value::from(0)),
-    (Some("winMain"), "get_lyric_edited_count") | (None, "get_lyric_edited_count") => Ok(Value::from(0)),
-    (Some("winMain"), "get_sound_effect_eq_preset") | (None, "get_sound_effect_eq_preset") => Ok(Value::Array(vec![])),
-    (Some("winMain"), "get_sound_effect_convolution_preset") | (None, "get_sound_effect_convolution_preset") => Ok(Value::Array(vec![])),
+    (Some("winMain"), "get_cache_size") | (None, "get_cache_size") => Ok(Value::from(0)),
+    (Some("winMain"), "clear_cache") | (None, "clear_cache") => Ok(Value::Null),
+    (Some("winMain"), "set_window_size") | (None, "set_window_size") => Ok(Value::Null),
+    (Some("winMain"), "get_music_url") | (None, "get_music_url") => {
+      let key = params.and_then(|v| v.as_str().map(|s| s.to_string())).unwrap_or_default();
+      if key.is_empty() {
+        return Ok(Value::Null);
+      }
+      let store = load_data_store()?;
+      let map = store.get("music_url").cloned().map(ensure_object).unwrap_or_default();
+      Ok(map.get(&key).cloned().unwrap_or(Value::Null))
+    }
+    (Some("winMain"), "save_music_url") | (None, "save_music_url") => {
+      let (id, url) = match params {
+        Some(Value::Object(obj)) => {
+          let id = obj.get("id").and_then(|v| v.as_str()).unwrap_or_default().to_string();
+          let url = obj.get("url").and_then(|v| v.as_str()).unwrap_or_default().to_string();
+          (id, url)
+        }
+        _ => (String::new(), String::new()),
+      };
+      if id.is_empty() || url.is_empty() {
+        return Ok(Value::Null);
+      }
+      let mut store = load_data_store()?;
+      let mut map = store.get("music_url").cloned().map(ensure_object).unwrap_or_default();
+      map.insert(id, Value::String(url));
+      store.insert("music_url".to_string(), Value::Object(map));
+      save_data_store(&store)?;
+      Ok(Value::Null)
+    }
+    (Some("winMain"), "clear_music_url") | (None, "clear_music_url") => {
+      let mut store = load_data_store()?;
+      store.insert("music_url".to_string(), Value::Object(Map::new()));
+      save_data_store(&store)?;
+      Ok(Value::Null)
+    }
+    (Some("winMain"), "get_music_url_count") | (None, "get_music_url_count") => {
+      let store = load_data_store()?;
+      let map = store.get("music_url").cloned().map(ensure_object).unwrap_or_default();
+      Ok(Value::from(map.len() as i64))
+    }
+    (Some("winMain"), "get_lyric_raw") | (None, "get_lyric_raw") => {
+      let id = params.and_then(|v| v.as_str().map(|s| s.to_string())).unwrap_or_default();
+      if id.is_empty() {
+        return Ok(default_lyric_info());
+      }
+      let store = load_data_store()?;
+      let map = store.get("lyric_raw").cloned().map(ensure_object).unwrap_or_default();
+      Ok(map.get(&id).cloned().unwrap_or_else(default_lyric_info))
+    }
+    (Some("winMain"), "save_lyric_raw") | (None, "save_lyric_raw") => {
+      let (id, lyrics) = match params {
+        Some(Value::Object(obj)) => {
+          let id = obj.get("id").and_then(|v| v.as_str()).unwrap_or_default().to_string();
+          let lyrics = obj.get("lyrics").cloned().unwrap_or_else(default_lyric_info);
+          (id, lyrics)
+        }
+        _ => (String::new(), default_lyric_info()),
+      };
+      if id.is_empty() {
+        return Ok(Value::Null);
+      }
+      let mut store = load_data_store()?;
+      let mut map = store.get("lyric_raw").cloned().map(ensure_object).unwrap_or_default();
+      map.insert(id, lyrics);
+      store.insert("lyric_raw".to_string(), Value::Object(map));
+      save_data_store(&store)?;
+      Ok(Value::Null)
+    }
+    (Some("winMain"), "clear_lyric_raw") | (None, "clear_lyric_raw") => {
+      let mut store = load_data_store()?;
+      store.insert("lyric_raw".to_string(), Value::Object(Map::new()));
+      save_data_store(&store)?;
+      Ok(Value::Null)
+    }
+    (Some("winMain"), "get_lyric_raw_count") | (None, "get_lyric_raw_count") => {
+      let store = load_data_store()?;
+      let map = store.get("lyric_raw").cloned().map(ensure_object).unwrap_or_default();
+      Ok(Value::from(map.len() as i64))
+    }
+    (Some("winMain"), "get_lyric_edited") | (None, "get_lyric_edited") => {
+      let id = params.and_then(|v| v.as_str().map(|s| s.to_string())).unwrap_or_default();
+      if id.is_empty() {
+        return Ok(default_lyric_info());
+      }
+      let store = load_data_store()?;
+      let map = store.get("lyric_edited").cloned().map(ensure_object).unwrap_or_default();
+      Ok(map.get(&id).cloned().unwrap_or_else(default_lyric_info))
+    }
+    (Some("winMain"), "save_lyric_edited") | (None, "save_lyric_edited") => {
+      let (id, lyrics) = match params {
+        Some(Value::Object(obj)) => {
+          let id = obj.get("id").and_then(|v| v.as_str()).unwrap_or_default().to_string();
+          let lyrics = obj.get("lyrics").cloned().unwrap_or_else(default_lyric_info);
+          (id, lyrics)
+        }
+        _ => (String::new(), default_lyric_info()),
+      };
+      if id.is_empty() {
+        return Ok(Value::Null);
+      }
+      let mut store = load_data_store()?;
+      let mut map = store.get("lyric_edited").cloned().map(ensure_object).unwrap_or_default();
+      map.insert(id, lyrics);
+      store.insert("lyric_edited".to_string(), Value::Object(map));
+      save_data_store(&store)?;
+      Ok(Value::Null)
+    }
+    (Some("winMain"), "remove_lyric_edited") | (None, "remove_lyric_edited") => {
+      let id = params.and_then(|v| v.as_str().map(|s| s.to_string())).unwrap_or_default();
+      if id.is_empty() {
+        return Ok(Value::Null);
+      }
+      let mut store = load_data_store()?;
+      let mut map = store.get("lyric_edited").cloned().map(ensure_object).unwrap_or_default();
+      map.remove(&id);
+      store.insert("lyric_edited".to_string(), Value::Object(map));
+      save_data_store(&store)?;
+      Ok(Value::Null)
+    }
+    (Some("winMain"), "clear_lyric_edited") | (None, "clear_lyric_edited") => {
+      let mut store = load_data_store()?;
+      store.insert("lyric_edited".to_string(), Value::Object(Map::new()));
+      save_data_store(&store)?;
+      Ok(Value::Null)
+    }
+    (Some("winMain"), "get_lyric_edited_count") | (None, "get_lyric_edited_count") => {
+      let store = load_data_store()?;
+      let map = store.get("lyric_edited").cloned().map(ensure_object).unwrap_or_default();
+      Ok(Value::from(map.len() as i64))
+    }
+    (Some("winMain"), "get_lyric") | (None, "get_lyric") => {
+      let id = params.and_then(|v| v.as_str().map(|s| s.to_string())).unwrap_or_default();
+      if id.is_empty() {
+        return Ok(serde_json::json!({
+          "lyric": "",
+          "tlyric": null,
+          "rlyric": null,
+          "lxlyric": null,
+          "rawlrcInfo": default_lyric_info()
+        }));
+      }
+      let store = load_data_store()?;
+      let raw_map = store.get("lyric_raw").cloned().map(ensure_object).unwrap_or_default();
+      let edited_map = store.get("lyric_edited").cloned().map(ensure_object).unwrap_or_default();
+      let raw = raw_map.get(&id).cloned().unwrap_or_else(default_lyric_info);
+      let base = edited_map.get(&id).cloned().unwrap_or_else(|| raw.clone());
+      let mut out = ensure_object(base);
+      out.insert("rawlrcInfo".to_string(), raw);
+      Ok(Value::Object(out))
+    }
+    (Some("winMain"), "get_sound_effect_eq_preset") | (None, "get_sound_effect_eq_preset") => {
+      let store = load_data_store()?;
+      let list = store.get("sound_effect_eq_preset").cloned().map(ensure_array).unwrap_or_default();
+      Ok(Value::Array(list))
+    }
+    (Some("winMain"), "get_sound_effect_convolution_preset") | (None, "get_sound_effect_convolution_preset") => {
+      let store = load_data_store()?;
+      let list = store
+        .get("sound_effect_convolution_preset")
+        .cloned()
+        .map(ensure_array)
+        .unwrap_or_default();
+      Ok(Value::Array(list))
+    }
     (Some("winMain"), "show_select_dialog") | (None, "show_select_dialog") => Ok(serde_json::json!({ "canceled": true, "filePaths": [] })),
     (Some("winMain"), "show_save_dialog") | (None, "show_save_dialog") => Ok(serde_json::json!({ "canceled": true, "filePath": null })),
     (Some("winMain"), "show_dialog") | (None, "show_dialog") => Ok(Value::Null),
-    (Some("winMain"), "get_themes") | (None, "get_themes") => Ok(Value::Array(vec![])),
+    (Some("winMain"), "save_theme") | (None, "save_theme") => {
+      let theme = params.unwrap_or(Value::Null);
+      let id = theme.get("id").and_then(|v| v.as_str()).unwrap_or_default().to_string();
+      if id.is_empty() {
+        return Ok(Value::Null);
+      }
+      let mut store = load_theme_store()?;
+      if let Some(pos) = store.userThemes.iter().position(|t| t.get("id").and_then(|v| v.as_str()) == Some(id.as_str())) {
+        store.userThemes[pos] = theme.clone();
+      } else {
+        store.userThemes.push(theme.clone());
+      }
+      save_theme_store(&store)?;
+      Ok(theme)
+    }
+    (Some("winMain"), "remove_theme") | (None, "remove_theme") => {
+      let id = params.and_then(|v| v.as_str().map(|s| s.to_string())).unwrap_or_default();
+      if id.is_empty() {
+        return Ok(Value::Null);
+      }
+      let mut store = load_theme_store()?;
+      store
+        .userThemes
+        .retain(|t| t.get("id").and_then(|v| v.as_str()) != Some(id.as_str()));
+      save_theme_store(&store)?;
+      Ok(Value::String(id))
+    }
+    (Some("winMain"), "get_themes") | (None, "get_themes") => {
+      let store = load_theme_store()?;
+      Ok(serde_json::json!({
+        "themes": [],
+        "userThemes": store.userThemes,
+        "dataPath": config_root_dir()?.to_string_lossy().to_string()
+      }))
+    }
     (Some("winMain"), "fullscreen") | (None, "fullscreen") => {
       let enable = params.and_then(|v| v.as_bool()).unwrap_or(false);
       window.set_fullscreen(enable).map_err(|e| e.to_string())?;
@@ -562,6 +811,43 @@ fn lx_ipc_invoke(window: tauri::Window, channel: String, params: Option<Value>) 
         "singerNames": []
       }))
     }
+    (Some("dislike"), "add_dislike_music_infos") => {
+      let infos = params.and_then(|v| v.as_array().cloned()).unwrap_or_default();
+      if infos.is_empty() {
+        return Ok(Value::Null);
+      }
+      let mut store = load_data_store()?;
+      let mut rules = store.get("dislike_rules").and_then(|v| v.as_str()).unwrap_or("").to_string();
+      for item in &infos {
+        let name = item.get("name").and_then(|v| v.as_str()).unwrap_or("");
+        let singer = item.get("singer").and_then(|v| v.as_str()).unwrap_or("");
+        rules.push('\n');
+        rules.push_str(name);
+        rules.push('@');
+        rules.push_str(singer);
+      }
+      store.insert("dislike_rules".to_string(), Value::String(rules));
+      save_data_store(&store)?;
+      window.emit("dislike_add_dislike_music_infos", Value::Array(infos)).map_err(|e| e.to_string())?;
+      Ok(Value::Null)
+    }
+    (Some("dislike"), "overwrite_dislike_music_infos") => {
+      let rules = params.and_then(|v| v.as_str().map(|s| s.to_string())).unwrap_or_default();
+      let mut store = load_data_store()?;
+      store.insert("dislike_rules".to_string(), Value::String(rules.clone()));
+      save_data_store(&store)?;
+      window
+        .emit("dislike_overwrite_dislike_music_infos", Value::String(rules))
+        .map_err(|e| e.to_string())?;
+      Ok(Value::Null)
+    }
+    (Some("dislike"), "clear_dislike_music_infos") => {
+      let mut store = load_data_store()?;
+      store.insert("dislike_rules".to_string(), Value::String(String::new()));
+      save_data_store(&store)?;
+      window.emit("dislike_clear_dislike_music_infos", Value::Null).map_err(|e| e.to_string())?;
+      Ok(Value::Null)
+    }
 
     (Some("hotKey"), "status") => Ok(Value::Object(Map::new())),
     _ => Ok(Value::Null),
@@ -586,6 +872,20 @@ fn lx_ipc_send(window: tauri::Window, channel: String, params: Option<Value>) ->
       }
       let mut store = load_data_store()?;
       store.insert(key, value);
+      save_data_store(&store)?;
+      Ok(())
+    }
+    (Some("winMain"), "save_sound_effect_eq_preset") | (None, "save_sound_effect_eq_preset") => {
+      let list = params.clone().map(ensure_array).unwrap_or_default();
+      let mut store = load_data_store()?;
+      store.insert("sound_effect_eq_preset".to_string(), Value::Array(list));
+      save_data_store(&store)?;
+      Ok(())
+    }
+    (Some("winMain"), "save_sound_effect_convolution_preset") | (None, "save_sound_effect_convolution_preset") => {
+      let list = params.clone().map(ensure_array).unwrap_or_default();
+      let mut store = load_data_store()?;
+      store.insert("sound_effect_convolution_preset".to_string(), Value::Array(list));
       save_data_store(&store)?;
       Ok(())
     }
