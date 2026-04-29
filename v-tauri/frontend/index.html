@@ -1,0 +1,80 @@
+<!doctype html>
+<html lang="zh-Hans">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>LX Music (Tauri)</title>
+    <style>
+      :root { color-scheme: light dark; }
+      body { font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif; padding: 16px; }
+      .row { display: flex; gap: 12px; flex-wrap: wrap; align-items: center; }
+      textarea { width: 100%; height: 220px; }
+      button { padding: 8px 12px; }
+      pre { white-space: pre-wrap; word-break: break-word; }
+    </style>
+  </head>
+  <body>
+    <h1>LX Music (Tauri)</h1>
+    <p>当前为 v-tauri 壳子工程：Rust 后端 + 前端占位页（不改原 Electron 项目）。</p>
+
+    <div class="row">
+      <button id="btn-load">读取设置</button>
+      <button id="btn-save">保存设置</button>
+      <button id="btn-meta">读取环境信息</button>
+    </div>
+
+    <h2>Setting JSON</h2>
+    <textarea id="setting"></textarea>
+
+    <h2>Result</h2>
+    <pre id="result"></pre>
+
+    <script>
+      const getInvoke = () => {
+        const t = window.__TAURI__
+        if (!t) throw new Error('__TAURI__ not found')
+        return t.invoke
+      }
+
+      const invoke = (...args) => getInvoke()(...args)
+
+      const $setting = document.getElementById('setting')
+      const $result = document.getElementById('result')
+
+      const setResult = (v) => {
+        $result.textContent = typeof v === 'string' ? v : JSON.stringify(v, null, 2)
+      }
+
+      const safeParseJson = (str) => {
+        try { return JSON.parse(str) } catch (_) { return null }
+      }
+
+      document.getElementById('btn-load').addEventListener('click', async() => {
+        const setting = await invoke('lx_ipc_invoke', { channel: 'get_app_setting', params: null })
+        $setting.value = JSON.stringify(setting ?? {}, null, 2)
+        setResult({ ok: true })
+      })
+
+      document.getElementById('btn-save').addEventListener('click', async() => {
+        const obj = safeParseJson($setting.value)
+        if (!obj) return setResult({ ok: false, message: 'Setting JSON 不是合法 JSON' })
+        await invoke('lx_ipc_invoke', { channel: 'set_app_setting', params: obj })
+        setResult({ ok: true })
+      })
+
+      document.getElementById('btn-meta').addEventListener('click', async() => {
+        const info = await invoke('lx_ipc_invoke', { channel: 'get_env_params', params: null })
+        setResult(info)
+      })
+
+      void (async() => {
+        try {
+          const setting = await invoke('lx_ipc_invoke', { channel: 'get_app_setting', params: null })
+          $setting.value = JSON.stringify(setting ?? {}, null, 2)
+        } catch (err) {
+          setResult(String(err?.message ?? err))
+        }
+      })()
+    </script>
+  </body>
+</html>
