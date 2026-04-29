@@ -4,6 +4,9 @@ const getTauri = () => {
   return t
 }
 
+const listeners = new Map()
+const keyOf = (channel, listener) => `${channel}__${listener}`
+
 export const ipcRenderer = {
   send(channel, params) {
     const t = getTauri()
@@ -49,10 +52,43 @@ export const ipcRenderer = {
       return result
     })
   },
-  on() {},
-  once() {},
-  removeListener() {},
-  removeAllListeners() {},
+  on(channel, listener) {
+    const t = getTauri()
+    const k = keyOf(channel, listener)
+    if (listeners.has(k)) return listener
+    t.event.listen(channel, (e) => {
+      listener({}, e?.payload)
+    }).then((unlisten) => {
+      listeners.set(k, unlisten)
+    }).catch(() => {})
+    return listener
+  },
+  once(channel, listener) {
+    const t = getTauri()
+    const k = keyOf(channel, listener)
+    if (listeners.has(k)) return listener
+    t.event.listen(channel, (e) => {
+      this.removeListener(channel, listener)
+      listener({}, e?.payload)
+    }).then((unlisten) => {
+      listeners.set(k, unlisten)
+    }).catch(() => {})
+    return listener
+  },
+  removeListener(channel, listener) {
+    const k = keyOf(channel, listener)
+    const unlisten = listeners.get(k)
+    if (!unlisten) return
+    listeners.delete(k)
+    try { unlisten() } catch (_) {}
+  },
+  removeAllListeners(channel) {
+    for (const [k, unlisten] of listeners) {
+      if (!k.startsWith(`${channel}__`)) continue
+      listeners.delete(k)
+      try { unlisten() } catch (_) {}
+    }
+  },
 }
 
 export const shell = {

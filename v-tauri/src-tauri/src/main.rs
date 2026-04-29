@@ -1,5 +1,6 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
+use serde::{Deserialize, Serialize};
 use serde_json::{Map, Value};
 use std::path::PathBuf;
 
@@ -21,6 +22,10 @@ fn parse_channel(channel: &str) -> (Option<&str>, &str) {
 
 fn data_store_path() -> Result<PathBuf, String> {
   Ok(config_root_dir()?.join("data.json"))
+}
+
+fn list_store_path() -> Result<PathBuf, String> {
+  Ok(config_root_dir()?.join("my_list.json"))
 }
 
 fn app_setting_path() -> Result<PathBuf, String> {
@@ -47,6 +52,72 @@ fn save_data_store(store: &Map<String, Value>) -> Result<(), String> {
   let bytes = serde_json::to_vec_pretty(&Value::Object(store.clone())).map_err(|e| e.to_string())?;
   std::fs::write(path, bytes).map_err(|e| e.to_string())?;
   Ok(())
+}
+
+#[derive(Clone, Serialize, Deserialize, Default)]
+struct ListStore {
+  #[serde(default)]
+  defaultList: Vec<Value>,
+  #[serde(default)]
+  loveList: Vec<Value>,
+  #[serde(default)]
+  tempList: Vec<Value>,
+  #[serde(default)]
+  userList: Vec<UserListFull>,
+}
+
+#[derive(Clone, Serialize, Deserialize)]
+struct UserListFull {
+  id: String,
+  name: String,
+  #[serde(default)]
+  source: Option<String>,
+  #[serde(default)]
+  sourceListId: Option<String>,
+  #[serde(default)]
+  locationUpdateTime: Option<i64>,
+  #[serde(default)]
+  list: Vec<Value>,
+}
+
+fn load_list_store() -> Result<ListStore, String> {
+  let path = list_store_path()?;
+  if !path.exists() {
+    return Ok(ListStore::default());
+  }
+  let bytes = std::fs::read(&path).map_err(|e| e.to_string())?;
+  serde_json::from_slice::<ListStore>(&bytes).map_err(|e| e.to_string())
+}
+
+fn save_list_store(store: &ListStore) -> Result<(), String> {
+  let root = config_root_dir()?;
+  std::fs::create_dir_all(&root).map_err(|e| e.to_string())?;
+  let path = list_store_path()?;
+  let bytes = serde_json::to_vec_pretty(store).map_err(|e| e.to_string())?;
+  std::fs::write(path, bytes).map_err(|e| e.to_string())?;
+  Ok(())
+}
+
+fn get_list_mut<'a>(store: &'a mut ListStore, id: &str) -> Option<&'a mut Vec<Value>> {
+  match id {
+    "default" => Some(&mut store.defaultList),
+    "love" => Some(&mut store.loveList),
+    "temp" => Some(&mut store.tempList),
+    _ => store.userList.iter_mut().find(|l| l.id == id).map(|l| &mut l.list),
+  }
+}
+
+fn get_list_ref<'a>(store: &'a ListStore, id: &str) -> Option<&'a Vec<Value>> {
+  match id {
+    "default" => Some(&store.defaultList),
+    "love" => Some(&store.loveList),
+    "temp" => Some(&store.tempList),
+    _ => store.userList.iter().find(|l| l.id == id).map(|l| &l.list),
+  }
+}
+
+fn music_id(v: &Value) -> Option<String> {
+  v.get("id").and_then(|id| id.as_str()).map(|s| s.to_string())
 }
 
 fn load_app_setting() -> Result<Value, String> {
@@ -133,10 +204,353 @@ fn lx_ipc_invoke(window: tauri::Window, channel: String, params: Option<Value>) 
       Ok(Value::from(enable))
     }
 
-    (Some("player"), "list_get") => Ok(Value::Array(vec![])),
-    (Some("player"), "list_music_get") => Ok(Value::Array(vec![])),
-    (Some("player"), "list_music_check_exist") => Ok(Value::from(false)),
-    (Some("player"), "list_music_get_list_ids") => Ok(Value::Array(vec![])),
+    (Some("player"), "list_get") => {
+      let store = load_list_store()?;
+      let list = store
+        .userList
+        .into_iter()
+        .map(|l| {
+          serde_json::json!({
+            "id": l.id,
+            "name": l.name,
+            "source": l.source,
+            "sourceListId": l.sourceListId,
+            "locationUpdateTime": l.locationUpdateTime
+          })
+        })
+        .collect::<Vec<Value>>();
+      Ok(Value::Array(list))
+    }
+    (Some("player"), "list_add") => {
+      let mut store = load_list_store()?;
+      let (position, list_infos) = match params {
+        Some(Value::Object(obj)) => {
+          let position = obj.get("position").and_then(|v| v.as_i64()).unwrap_or(0).max(0) as usize;
+          let list_infos = obj.get("listInfos").and_then(|v| v.as_array()).cloned().unwrap_or_default();
+          (position, list_infos)
+        }
+        _ => (0, vec![]),
+      };
+      let mut new_infos: Vec<Value> = Vec::new();
+      let mut insert_items: Vec<UserListFull> = Vec::new();
+      for info in list_infos {
+        let id = info.get("id").and_then(|v| v.as_str()).unwrap_or_default().to_string();
+        if id.is_empty() {
+          continue;
+        }
+        let name = info.get("name").and_then(|v| v.as_str()).unwrap_or_default().to_string();
+        let source = info.get("source").and_then(|v| v.as_str()).map(|s| s.to_string());
+        let source_list_id = info.get("sourceListId").and_then(|v| v.as_str()).map(|s| s.to_string());
+        let location_update_time = info.get("locationUpdateTime").and_then(|v| v.as_i64());
+        insert_items.push(UserListFull {
+          id: id.clone(),
+          name: name.clone(),
+          source,
+          sourceListId: source_list_id,
+          locationUpdateTime: location_update_time,
+          list: vec![],
+        });
+        new_infos.push(serde_json::json!({
+          "id": id,
+          "name": name,
+          "locationUpdateTime": location_update_time
+        }));
+      }
+      let pos = position.min(store.userList.len());
+      store.userList.splice(pos..pos, insert_items);
+      save_list_store(&store)?;
+      let payload = serde_json::json!({ "position": pos, "listInfos": new_infos });
+      window.emit("player_list_add", payload).map_err(|e| e.to_string())?;
+      Ok(Value::Null)
+    }
+    (Some("player"), "list_remove") => {
+      let ids = params.and_then(|v| v.as_array().cloned()).unwrap_or_default();
+      let id_set = ids
+        .iter()
+        .filter_map(|v| v.as_str().map(|s| s.to_string()))
+        .collect::<std::collections::HashSet<String>>();
+      if id_set.is_empty() {
+        return Ok(Value::Null);
+      }
+      let mut store = load_list_store()?;
+      store.userList.retain(|l| !id_set.contains(&l.id));
+      save_list_store(&store)?;
+      window.emit("player_list_remove", Value::Array(ids)).map_err(|e| e.to_string())?;
+      Ok(Value::Null)
+    }
+    (Some("player"), "list_update") => {
+      let list_infos = params.and_then(|v| v.as_array().cloned()).unwrap_or_default();
+      if list_infos.is_empty() {
+        return Ok(Value::Null);
+      }
+      let mut store = load_list_store()?;
+      for info in &list_infos {
+        let id = info.get("id").and_then(|v| v.as_str()).unwrap_or_default();
+        if id.is_empty() {
+          continue;
+        }
+        if let Some(target) = store.userList.iter_mut().find(|l| l.id == id) {
+          if let Some(name) = info.get("name").and_then(|v| v.as_str()) {
+            target.name = name.to_string();
+          }
+          if let Some(t) = info.get("locationUpdateTime").and_then(|v| v.as_i64()) {
+            target.locationUpdateTime = Some(t);
+          }
+        }
+      }
+      save_list_store(&store)?;
+      window.emit("player_list_update", Value::Array(list_infos)).map_err(|e| e.to_string())?;
+      Ok(Value::Null)
+    }
+    (Some("player"), "list_update_position") => {
+      let (position, ids) = match params {
+        Some(Value::Object(obj)) => {
+          let position = obj.get("position").and_then(|v| v.as_i64()).unwrap_or(0).max(0) as usize;
+          let ids = obj.get("ids").and_then(|v| v.as_array()).cloned().unwrap_or_default();
+          (position, ids)
+        }
+        _ => (0, vec![]),
+      };
+      let id_list = ids
+        .iter()
+        .filter_map(|v| v.as_str().map(|s| s.to_string()))
+        .collect::<Vec<String>>();
+      if id_list.is_empty() {
+        return Ok(Value::Null);
+      }
+      let mut store = load_list_store()?;
+      let mut moved: Vec<UserListFull> = Vec::new();
+      store.userList.retain(|l| {
+        if id_list.contains(&l.id) {
+          moved.push(l.clone());
+          false
+        } else {
+          true
+        }
+      });
+      let pos = position.min(store.userList.len());
+      store.userList.splice(pos..pos, moved);
+      save_list_store(&store)?;
+      let payload = serde_json::json!({ "position": pos, "ids": ids });
+      window.emit("player_list_update_position", payload).map_err(|e| e.to_string())?;
+      Ok(Value::Null)
+    }
+    (Some("player"), "list_music_get") => {
+      let list_id = params.and_then(|v| v.as_str().map(|s| s.to_string())).unwrap_or_default();
+      if list_id.is_empty() {
+        return Ok(Value::Array(vec![]));
+      }
+      let store = load_list_store()?;
+      Ok(Value::Array(get_list_ref(&store, &list_id).cloned().unwrap_or_default()))
+    }
+    (Some("player"), "list_music_add") => {
+      let (id, music_infos, location) = match params {
+        Some(Value::Object(obj)) => {
+          let id = obj.get("id").and_then(|v| v.as_str()).unwrap_or_default().to_string();
+          let music_infos = obj.get("musicInfos").and_then(|v| v.as_array()).cloned().unwrap_or_default();
+          let location = obj.get("addMusicLocationType").and_then(|v| v.as_str()).unwrap_or("bottom").to_string();
+          (id, music_infos, location)
+        }
+        _ => (String::new(), vec![], "bottom".to_string()),
+      };
+      if id.is_empty() || music_infos.is_empty() {
+        return Ok(Value::Null);
+      }
+      let mut store = load_list_store()?;
+      let list = match get_list_mut(&mut store, &id) {
+        Some(l) => l,
+        None => return Ok(Value::Null),
+      };
+      if location == "top" {
+        let mut out = music_infos.clone();
+        out.extend(list.drain(..));
+        *list = out;
+      } else {
+        list.extend(music_infos.clone());
+      }
+      save_list_store(&store)?;
+      let payload = serde_json::json!({ "id": id, "musicInfos": music_infos, "addMusicLocationType": location });
+      window.emit("player_list_music_add", payload).map_err(|e| e.to_string())?;
+      Ok(Value::Null)
+    }
+    (Some("player"), "list_music_move") => {
+      let (from_id, to_id, music_infos, location) = match params {
+        Some(Value::Object(obj)) => {
+          let from_id = obj.get("fromId").and_then(|v| v.as_str()).unwrap_or_default().to_string();
+          let to_id = obj.get("toId").and_then(|v| v.as_str()).unwrap_or_default().to_string();
+          let music_infos = obj.get("musicInfos").and_then(|v| v.as_array()).cloned().unwrap_or_default();
+          let location = obj.get("addMusicLocationType").and_then(|v| v.as_str()).unwrap_or("bottom").to_string();
+          (from_id, to_id, music_infos, location)
+        }
+        _ => (String::new(), String::new(), vec![], "bottom".to_string()),
+      };
+      if from_id.is_empty() || to_id.is_empty() || music_infos.is_empty() {
+        return Ok(Value::Null);
+      }
+      let move_ids = music_infos
+        .iter()
+        .filter_map(music_id)
+        .collect::<std::collections::HashSet<String>>();
+      let mut store = load_list_store()?;
+      if let Some(from_list) = get_list_mut(&mut store, &from_id) {
+        from_list.retain(|m| music_id(m).map(|id| !move_ids.contains(&id)).unwrap_or(true));
+      }
+      if let Some(to_list) = get_list_mut(&mut store, &to_id) {
+        if location == "top" {
+          let mut out = music_infos.clone();
+          out.extend(to_list.drain(..));
+          *to_list = out;
+        } else {
+          to_list.extend(music_infos.clone());
+        }
+      }
+      save_list_store(&store)?;
+      let payload = serde_json::json!({ "fromId": from_id, "toId": to_id, "musicInfos": music_infos, "addMusicLocationType": location });
+      window.emit("player_list_music_move", payload).map_err(|e| e.to_string())?;
+      Ok(Value::Null)
+    }
+    (Some("player"), "list_music_remove") => {
+      let (list_id, ids) = match params {
+        Some(Value::Object(obj)) => {
+          let list_id = obj.get("listId").and_then(|v| v.as_str()).unwrap_or_default().to_string();
+          let ids = obj.get("ids").and_then(|v| v.as_array()).cloned().unwrap_or_default();
+          (list_id, ids)
+        }
+        _ => (String::new(), vec![]),
+      };
+      if list_id.is_empty() || ids.is_empty() {
+        return Ok(Value::Null);
+      }
+      let id_set = ids
+        .iter()
+        .filter_map(|v| v.as_str().map(|s| s.to_string()))
+        .collect::<std::collections::HashSet<String>>();
+      let mut store = load_list_store()?;
+      if let Some(list) = get_list_mut(&mut store, &list_id) {
+        list.retain(|m| music_id(m).map(|id| !id_set.contains(&id)).unwrap_or(true));
+      }
+      save_list_store(&store)?;
+      let payload = serde_json::json!({ "listId": list_id, "ids": ids });
+      window.emit("player_list_music_remove", payload).map_err(|e| e.to_string())?;
+      Ok(Value::Null)
+    }
+    (Some("player"), "list_music_overwrite") => {
+      let (list_id, music_infos) = match params {
+        Some(Value::Object(obj)) => {
+          let list_id = obj.get("listId").and_then(|v| v.as_str()).unwrap_or_default().to_string();
+          let music_infos = obj.get("musicInfos").and_then(|v| v.as_array()).cloned().unwrap_or_default();
+          (list_id, music_infos)
+        }
+        _ => (String::new(), vec![]),
+      };
+      if list_id.is_empty() {
+        return Ok(Value::Null);
+      }
+      let mut store = load_list_store()?;
+      if let Some(list) = get_list_mut(&mut store, &list_id) {
+        *list = music_infos.clone();
+      }
+      save_list_store(&store)?;
+      let payload = serde_json::json!({ "listId": list_id, "musicInfos": music_infos });
+      window.emit("player_list_music_overwrite", payload).map_err(|e| e.to_string())?;
+      Ok(Value::Null)
+    }
+    (Some("player"), "list_music_clear") => {
+      let list_ids = params.and_then(|v| v.as_array().cloned()).unwrap_or_default();
+      if list_ids.is_empty() {
+        return Ok(Value::Null);
+      }
+      let mut store = load_list_store()?;
+      for id in &list_ids {
+        let id = id.as_str().unwrap_or_default();
+        if let Some(list) = get_list_mut(&mut store, id) {
+          list.clear();
+        }
+      }
+      save_list_store(&store)?;
+      window.emit("player_list_music_clear", Value::Array(list_ids)).map_err(|e| e.to_string())?;
+      Ok(Value::Null)
+    }
+    (Some("player"), "list_data_overwire") => {
+      let data = params.unwrap_or(Value::Null);
+      let mut store = load_list_store()?;
+      if let Some(d) = data.get("defaultList").and_then(|v| v.as_array()) {
+        store.defaultList = d.to_vec();
+      }
+      if let Some(d) = data.get("loveList").and_then(|v| v.as_array()) {
+        store.loveList = d.to_vec();
+      }
+      if let Some(d) = data.get("tempList").and_then(|v| v.as_array()) {
+        store.tempList = d.to_vec();
+      }
+      if let Some(u) = data.get("userList").and_then(|v| v.as_array()) {
+        let mut user_list: Vec<UserListFull> = Vec::new();
+        for item in u {
+          let id = item.get("id").and_then(|v| v.as_str()).unwrap_or_default().to_string();
+          if id.is_empty() {
+            continue;
+          }
+          let name = item.get("name").and_then(|v| v.as_str()).unwrap_or_default().to_string();
+          let source = item.get("source").and_then(|v| v.as_str()).map(|s| s.to_string());
+          let source_list_id = item.get("sourceListId").and_then(|v| v.as_str()).map(|s| s.to_string());
+          let location_update_time = item.get("locationUpdateTime").and_then(|v| v.as_i64());
+          let list = item.get("list").and_then(|v| v.as_array()).cloned().unwrap_or_default();
+          user_list.push(UserListFull {
+            id,
+            name,
+            source,
+            sourceListId: source_list_id,
+            locationUpdateTime: location_update_time,
+            list,
+          });
+        }
+        store.userList = user_list;
+      }
+      save_list_store(&store)?;
+      window.emit("player_list_data_overwire", data).map_err(|e| e.to_string())?;
+      Ok(Value::Null)
+    }
+    (Some("player"), "list_music_check_exist") => {
+      let (list_id, music_info_id) = match params {
+        Some(Value::Object(obj)) => {
+          let list_id = obj.get("listId").and_then(|v| v.as_str()).unwrap_or_default().to_string();
+          let music_info_id = obj.get("musicInfoId").and_then(|v| v.as_str()).unwrap_or_default().to_string();
+          (list_id, music_info_id)
+        }
+        _ => (String::new(), String::new()),
+      };
+      if list_id.is_empty() || music_info_id.is_empty() {
+        return Ok(Value::from(false));
+      }
+      let store = load_list_store()?;
+      let ok = get_list_ref(&store, &list_id)
+        .map(|list| list.iter().any(|m| music_id(m).map(|id| id == music_info_id).unwrap_or(false)))
+        .unwrap_or(false);
+      Ok(Value::from(ok))
+    }
+    (Some("player"), "list_music_get_list_ids") => {
+      let music_info_id = params.and_then(|v| v.as_str().map(|s| s.to_string())).unwrap_or_default();
+      if music_info_id.is_empty() {
+        return Ok(Value::Array(vec![]));
+      }
+      let store = load_list_store()?;
+      let mut ids: Vec<Value> = Vec::new();
+      for (id, list) in [
+        ("default".to_string(), &store.defaultList),
+        ("love".to_string(), &store.loveList),
+        ("temp".to_string(), &store.tempList),
+      ] {
+        if list.iter().any(|m| music_id(m).map(|mid| mid == music_info_id).unwrap_or(false)) {
+          ids.push(Value::String(id));
+        }
+      }
+      for l in &store.userList {
+        if l.list.iter().any(|m| music_id(m).map(|mid| mid == music_info_id).unwrap_or(false)) {
+          ids.push(Value::String(l.id.clone()));
+        }
+      }
+      Ok(Value::Array(ids))
+    }
 
     (Some("dislike"), "get_dislike_music_infos") => {
       let store = load_data_store()?;
