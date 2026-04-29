@@ -8,8 +8,34 @@ fn config_root_dir() -> Result<PathBuf, String> {
   Ok(base.join("lx-music-tauri"))
 }
 
+fn data_store_path() -> Result<PathBuf, String> {
+  Ok(config_root_dir()?.join("data.json"))
+}
+
 fn app_setting_path() -> Result<PathBuf, String> {
   Ok(config_root_dir()?.join("app_setting.json"))
+}
+
+fn load_data_store() -> Result<Map<String, Value>, String> {
+  let path = data_store_path()?;
+  if !path.exists() {
+    return Ok(Map::new());
+  }
+  let bytes = std::fs::read(&path).map_err(|e| e.to_string())?;
+  let v: Value = serde_json::from_slice(&bytes).map_err(|e| e.to_string())?;
+  match v {
+    Value::Object(obj) => Ok(obj),
+    _ => Ok(Map::new()),
+  }
+}
+
+fn save_data_store(store: &Map<String, Value>) -> Result<(), String> {
+  let root = config_root_dir()?;
+  std::fs::create_dir_all(&root).map_err(|e| e.to_string())?;
+  let path = data_store_path()?;
+  let bytes = serde_json::to_vec_pretty(&Value::Object(store.clone())).map_err(|e| e.to_string())?;
+  std::fs::write(path, bytes).map_err(|e| e.to_string())?;
+  Ok(())
 }
 
 fn load_app_setting() -> Result<Value, String> {
@@ -36,6 +62,13 @@ fn merge_object(base: &mut Map<String, Value>, patch: &Map<String, Value>) {
   }
 }
 
+fn default_hotkey_config() -> Value {
+  serde_json::json!({
+    "local": { "enable": false, "keys": {} },
+    "global": { "enable": false, "keys": {} }
+  })
+}
+
 #[tauri::command]
 fn lx_ipc_invoke(channel: String, params: Option<Value>) -> Result<Value, String> {
   match channel.as_str() {
@@ -58,13 +91,49 @@ fn lx_ipc_invoke(channel: String, params: Option<Value>) -> Result<Value, String
       "version": env!("CARGO_PKG_VERSION"),
       "configDir": config_root_dir()?.to_string_lossy().to_string()
     })),
+    "get_data" => {
+      let key = match params {
+        Some(Value::String(s)) => s,
+        _ => return Ok(Value::Null),
+      };
+      let store = load_data_store()?;
+      Ok(store.get(&key).cloned().unwrap_or(Value::Null))
+    }
+    "get_system_fonts" => Ok(Value::Array(vec![])),
+    "get_hot_key" => Ok(default_hotkey_config()),
+    "download_list_get" => Ok(Value::Array(vec![])),
+    "get_user_api_list" => Ok(Value::Array(vec![])),
+    "get_other_source" => Ok(Value::Array(vec![])),
+    "get_other_source_count" => Ok(Value::from(0)),
+    "get_music_url_count" => Ok(Value::from(0)),
+    "get_lyric_raw_count" => Ok(Value::from(0)),
+    "get_lyric_edited_count" => Ok(Value::from(0)),
+    "show_select_dialog" => Ok(serde_json::json!({ "canceled": true, "filePaths": [] })),
+    "show_save_dialog" => Ok(serde_json::json!({ "canceled": true, "filePath": null })),
     _ => Err(format!("unsupported channel: {channel}")),
   }
 }
 
 #[tauri::command]
-fn lx_ipc_send(channel: String, _params: Option<Value>) -> Result<(), String> {
+fn lx_ipc_send(channel: String, params: Option<Value>) -> Result<(), String> {
   match channel.as_str() {
+    "save_data" => {
+      let (key, value) = match params {
+        Some(Value::Object(obj)) => {
+          let key = obj.get("path").and_then(|v| v.as_str()).unwrap_or_default().to_string();
+          let value = obj.get("data").cloned().unwrap_or(Value::Null);
+          (key, value)
+        }
+        _ => (String::new(), Value::Null),
+      };
+      if key.is_empty() {
+        return Ok(());
+      }
+      let mut store = load_data_store()?;
+      store.insert(key, value);
+      save_data_store(&store)?;
+      Ok(())
+    }
     _ => Ok(()),
   }
 }
@@ -75,4 +144,3 @@ fn main() {
     .run(tauri::generate_context!())
     .expect("error while running tauri application");
 }
-
