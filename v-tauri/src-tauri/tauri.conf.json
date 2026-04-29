@@ -12,6 +12,10 @@
   "tauri": {
     "allowlist": {
       "all": false,
+      "clipboard": {
+        "readText": true,
+        "writeText": true
+      },
       "shell": {
         "open": true
       }
@@ -26,14 +30,13 @@
     ],
     "security": {
       "csp": null
+    },
+    "bundle": {
+      "active": true,
+      "identifier": "com.lxmusic.tauri",
+      "icon": [
+        "icons/icon.png"
+      ]
     }
-  },
-  "bundle": {
-    "active": true,
-    "identifier": "com.lxmusic.tauri",
-    "icon": [
-      "icons/icon.png"
-    ]
   }
 }
-

@@ -1,0 +1,28 @@
+# v-tauri
+
+这是在不改动仓库现有 Electron 工程的前提下，新建出来的 Tauri + Rust “壳子工程”。
+
+## 目录
+
+- [frontend](file:///workspace/v-tauri/frontend)：占位前端页面
+- [src-tauri](file:///workspace/v-tauri/src-tauri)：Tauri + Rust 后端
+
+## 运行
+
+```bash
+cd v-tauri
+npm install
+npm run dev
+```
+
+## Linux 依赖
+
+Linux 下 Tauri 1.x 默认使用 GTK/WebKit2GTK，需要系统依赖（不同发行版包名可能不同）。
+
+Debian/Ubuntu 常用依赖示例：
+
+```bash
+sudo apt-get update
+sudo apt-get install -y pkg-config libglib2.0-dev libwebkit2gtk-4.0-dev libgtk-3-dev libssl-dev build-essential
+```
+

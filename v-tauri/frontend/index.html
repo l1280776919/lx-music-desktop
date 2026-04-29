@@ -21,6 +21,9 @@
       <button id="btn-load">读取设置</button>
       <button id="btn-save">保存设置</button>
       <button id="btn-meta">读取环境信息</button>
+      <button id="btn-open">打开网页</button>
+      <button id="btn-copy">写入剪贴板</button>
+      <button id="btn-paste">读取剪贴板</button>
     </div>
 
     <h2>Setting JSON</h2>
@@ -29,6 +32,7 @@
     <h2>Result</h2>
     <pre id="result"></pre>
 
+    <script src="./lx-electron-shim.js"></script>
     <script>
       const getInvoke = () => {
         const t = window.__TAURI__
@@ -65,6 +69,21 @@
       document.getElementById('btn-meta').addEventListener('click', async() => {
         const info = await invoke('lx_ipc_invoke', { channel: 'get_env_params', params: null })
         setResult(info)
+      })
+
+      document.getElementById('btn-open').addEventListener('click', async() => {
+        await window.electron?.shell?.openExternal?.('https://github.com/lyswhut/lx-music-desktop')
+        setResult({ ok: true })
+      })
+
+      document.getElementById('btn-copy').addEventListener('click', async() => {
+        await window.electron?.clipboard?.writeText?.('LX Music (Tauri)')
+        setResult({ ok: true })
+      })
+
+      document.getElementById('btn-paste').addEventListener('click', async() => {
+        const text = await window.electron?.clipboard?.readText?.()
+        setResult({ text })
       })
 
       void (async() => {
