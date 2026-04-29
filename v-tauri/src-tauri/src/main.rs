@@ -32,6 +32,10 @@ fn theme_store_path() -> Result<PathBuf, String> {
   Ok(config_root_dir()?.join("themes.json"))
 }
 
+fn download_store_path() -> Result<PathBuf, String> {
+  Ok(config_root_dir()?.join("download_list.json"))
+}
+
 fn app_setting_path() -> Result<PathBuf, String> {
   Ok(config_root_dir()?.join("app_setting.json"))
 }
@@ -101,6 +105,24 @@ fn save_theme_store(store: &ThemeStore) -> Result<(), String> {
   std::fs::create_dir_all(&root).map_err(|e| e.to_string())?;
   let path = theme_store_path()?;
   let bytes = serde_json::to_vec_pretty(store).map_err(|e| e.to_string())?;
+  std::fs::write(path, bytes).map_err(|e| e.to_string())?;
+  Ok(())
+}
+
+fn load_download_list() -> Result<Vec<Value>, String> {
+  let path = download_store_path()?;
+  if !path.exists() {
+    return Ok(vec![]);
+  }
+  let bytes = std::fs::read(&path).map_err(|e| e.to_string())?;
+  serde_json::from_slice::<Vec<Value>>(&bytes).map_err(|e| e.to_string())
+}
+
+fn save_download_list(list: &[Value]) -> Result<(), String> {
+  let root = config_root_dir()?;
+  std::fs::create_dir_all(&root).map_err(|e| e.to_string())?;
+  let path = download_store_path()?;
+  let bytes = serde_json::to_vec_pretty(list).map_err(|e| e.to_string())?;
   std::fs::write(path, bytes).map_err(|e| e.to_string())?;
   Ok(())
 }
@@ -203,7 +225,7 @@ fn default_hotkey_config() -> Value {
 }
 
 #[tauri::command]
-fn lx_ipc_invoke(window: tauri::Window, channel: String, params: Option<Value>) -> Result<Value, String> {
+async fn lx_ipc_invoke(window: tauri::Window, channel: String, params: Option<Value>) -> Result<Value, String> {
   let (module, name) = parse_channel(&channel);
   match (module, name) {
     (Some("common"), "get_app_setting") | (None, "get_app_setting") => load_app_setting(),
@@ -409,8 +431,146 @@ fn lx_ipc_invoke(window: tauri::Window, channel: String, params: Option<Value>) 
         .unwrap_or_default();
       Ok(Value::Array(list))
     }
-    (Some("winMain"), "show_select_dialog") | (None, "show_select_dialog") => Ok(serde_json::json!({ "canceled": true, "filePaths": [] })),
-    (Some("winMain"), "show_save_dialog") | (None, "show_save_dialog") => Ok(serde_json::json!({ "canceled": true, "filePath": null })),
+    (Some("winMain"), "download_list_get") | (None, "download_list_get") => Ok(Value::Array(load_download_list()?)),
+    (Some("winMain"), "download_list_add") | (None, "download_list_add") => {
+      let (list, add_type) = match params {
+        Some(Value::Object(obj)) => {
+          let list = obj.get("list").and_then(|v| v.as_array()).cloned().unwrap_or_default();
+          let add_type = obj.get("addMusicLocationType").and_then(|v| v.as_str()).unwrap_or("bottom").to_string();
+          (list, add_type)
+        }
+        _ => (vec![], "bottom".to_string()),
+      };
+      if list.is_empty() {
+        return Ok(Value::Null);
+      }
+      let mut stored = load_download_list()?;
+      if add_type == "top" {
+        let mut out = list;
+        out.extend(stored.drain(..));
+        stored = out;
+      } else {
+        stored.extend(list);
+      }
+      save_download_list(&stored)?;
+      Ok(Value::Null)
+    }
+    (Some("winMain"), "download_list_update") | (None, "download_list_update") => {
+      let updates = params.and_then(|v| v.as_array().cloned()).unwrap_or_default();
+      if updates.is_empty() {
+        return Ok(Value::Null);
+      }
+      let mut stored = load_download_list()?;
+      let mut map: std::collections::HashMap<String, Value> = std::collections::HashMap::new();
+      for item in updates {
+        if let Some(id) = item.get("id").and_then(|v| v.as_str()) {
+          map.insert(id.to_string(), item);
+        }
+      }
+      if map.is_empty() {
+        return Ok(Value::Null);
+      }
+      for item in stored.iter_mut() {
+        if let Some(id) = item.get("id").and_then(|v| v.as_str()) {
+          if let Some(new_item) = map.remove(id) {
+            *item = new_item;
+          }
+        }
+      }
+      for (_, item) in map {
+        stored.push(item);
+      }
+      save_download_list(&stored)?;
+      Ok(Value::Null)
+    }
+    (Some("winMain"), "download_list_remove") | (None, "download_list_remove") => {
+      let ids = params.and_then(|v| v.as_array().cloned()).unwrap_or_default();
+      if ids.is_empty() {
+        return Ok(Value::Null);
+      }
+      let id_set = ids
+        .iter()
+        .filter_map(|v| v.as_str().map(|s| s.to_string()))
+        .collect::<std::collections::HashSet<String>>();
+      if id_set.is_empty() {
+        return Ok(Value::Null);
+      }
+      let mut stored = load_download_list()?;
+      stored.retain(|item| item.get("id").and_then(|v| v.as_str()).map(|id| !id_set.contains(id)).unwrap_or(true));
+      save_download_list(&stored)?;
+      Ok(Value::Null)
+    }
+    (Some("winMain"), "download_list_clear") | (None, "download_list_clear") => {
+      save_download_list(&[])?;
+      Ok(Value::Null)
+    }
+
+    (Some("winMain"), "show_select_dialog") | (None, "show_select_dialog") => {
+      use tauri::api::dialog::blocking::FileDialogBuilder;
+      let opts = params.unwrap_or(Value::Null);
+      let properties = opts.get("properties").and_then(|v| v.as_array()).cloned().unwrap_or_default();
+      let mut is_dir = false;
+      let mut multi = false;
+      for p in &properties {
+        if let Some(s) = p.as_str() {
+          if s == "openDirectory" {
+            is_dir = true;
+          } else if s == "multiSelections" {
+            multi = true;
+          }
+        }
+      }
+      let mut builder = FileDialogBuilder::new();
+      if let Some(title) = opts.get("title").and_then(|v| v.as_str()) {
+        builder = builder.set_title(title);
+      }
+      if let Some(default_path) = opts.get("defaultPath").and_then(|v| v.as_str()) {
+        if !default_path.is_empty() {
+          builder = builder.set_directory(default_path);
+        }
+      }
+      if let Some(filters) = opts.get("filters").and_then(|v| v.as_array()) {
+        for filter in filters {
+          let name = filter.get("name").and_then(|v| v.as_str()).unwrap_or("Files");
+          let exts = filter.get("extensions").and_then(|v| v.as_array()).cloned().unwrap_or_default();
+          let ext_owned: Vec<String> = exts.into_iter().filter_map(|v| v.as_str().map(|s| s.to_string())).collect();
+          let ext_refs: Vec<&str> = ext_owned.iter().map(|s| s.as_str()).collect();
+          if !ext_refs.is_empty() {
+            builder = builder.add_filter(name, &ext_refs);
+          }
+        }
+      }
+      if is_dir {
+        if multi {
+          let paths = builder.pick_folders().unwrap_or_default();
+          Ok(serde_json::json!({ "canceled": paths.is_empty(), "filePaths": paths.iter().map(|p| p.to_string_lossy().to_string()).collect::<Vec<String>>() }))
+        } else {
+          let path = builder.pick_folder();
+          Ok(serde_json::json!({ "canceled": path.is_none(), "filePaths": path.map(|p| vec![p.to_string_lossy().to_string()]).unwrap_or_default() }))
+        }
+      } else if multi {
+        let paths = builder.pick_files().unwrap_or_default();
+        Ok(serde_json::json!({ "canceled": paths.is_empty(), "filePaths": paths.iter().map(|p| p.to_string_lossy().to_string()).collect::<Vec<String>>() }))
+      } else {
+        let path = builder.pick_file();
+        Ok(serde_json::json!({ "canceled": path.is_none(), "filePaths": path.map(|p| vec![p.to_string_lossy().to_string()]).unwrap_or_default() }))
+      }
+    }
+    (Some("winMain"), "show_save_dialog") | (None, "show_save_dialog") => {
+      use tauri::api::dialog::blocking::FileDialogBuilder;
+      let opts = params.unwrap_or(Value::Null);
+      let mut builder = FileDialogBuilder::new();
+      if let Some(title) = opts.get("title").and_then(|v| v.as_str()) {
+        builder = builder.set_title(title);
+      }
+      if let Some(default_path) = opts.get("defaultPath").and_then(|v| v.as_str()) {
+        if !default_path.is_empty() {
+          builder = builder.set_file_name(default_path);
+        }
+      }
+      let path = builder.save_file();
+      Ok(serde_json::json!({ "canceled": path.is_none(), "filePath": path.map(|p| p.to_string_lossy().to_string()) }))
+    }
     (Some("winMain"), "show_dialog") | (None, "show_dialog") => Ok(Value::Null),
     (Some("winMain"), "save_theme") | (None, "save_theme") => {
       let theme = params.unwrap_or(Value::Null);
