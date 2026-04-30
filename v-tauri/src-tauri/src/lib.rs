@@ -1,4 +1,5 @@
 mod player;
+mod store;
 
 use rfd::FileDialog;
 use reqwest::blocking::Client;
@@ -12,7 +13,7 @@ use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use std::{
     fs,
-    path::{Path, PathBuf},
+    path::Path,
     time::Duration,
 };
 use tauri::{AppHandle, Manager, WebviewWindow};
@@ -60,15 +61,6 @@ struct RsaEncryptPayload {
     key: String,
 }
 
-fn app_data_dir(app: &AppHandle) -> Result<PathBuf, String> {
-    let dir = app
-        .path()
-        .app_data_dir()
-        .map_err(|err| err.to_string())?;
-    fs::create_dir_all(&dir).map_err(|err| err.to_string())?;
-    Ok(dir)
-}
-
 fn build_header_map(
     headers: Option<std::collections::HashMap<String, String>>,
 ) -> Result<HeaderMap, String> {
@@ -101,28 +93,14 @@ fn parse_rsa_public_key(key: &str) -> Result<RsaPublicKey, String> {
         .map_err(|err| err.to_string())
 }
 
-fn store_file_path(app: &AppHandle, name: &str) -> Result<PathBuf, String> {
-    let dir = app_data_dir(app)?;
-    Ok(dir.join(format!("{name}.json")))
-}
-
 #[tauri::command]
 fn store_get(app: AppHandle, name: String) -> Result<Option<Value>, String> {
-    let path = store_file_path(&app, &name)?;
-    if !path.exists() {
-        return Ok(None);
-    }
-    let text = fs::read_to_string(path).map_err(|err| err.to_string())?;
-    serde_json::from_str(&text)
-        .map(Some)
-        .map_err(|err| err.to_string())
+    store::get_store(&app, &name)
 }
 
 #[tauri::command]
 fn store_set(app: AppHandle, name: String, value: Value) -> Result<(), String> {
-    let path = store_file_path(&app, &name)?;
-    let text = serde_json::to_string_pretty(&value).map_err(|err| err.to_string())?;
-    fs::write(path, text).map_err(|err| err.to_string())
+    store::set_store(&app, &name, &value)
 }
 
 #[tauri::command]
