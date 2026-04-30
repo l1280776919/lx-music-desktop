@@ -85,15 +85,20 @@ export default {
 
   opacity: .6;
   cursor: pointer;
+  transition: background-color 0.2s ease, opacity 0.2s ease, transform 0.1s ease;
+  border-radius: 50%;
+  height: 24px;
 
   svg {
     filter: drop-shadow(0 0 1px rgba(0, 0, 0, 0.2));
   }
   &:hover {
     opacity: 1;
+    background-color: rgba(0, 0, 0, 0.05);
   }
   &:active {
     opacity: 1;
+    transform: scale(0.92);
   }
 }
 

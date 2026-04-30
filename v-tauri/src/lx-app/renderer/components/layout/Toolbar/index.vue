@@ -26,6 +26,10 @@ import SearchInput from './SearchInput.vue'
   padding-left: 15px;
   -webkit-app-region: drag;
   z-index: 2;
+  background-color: transparent;
+  // backdrop-filter: blur(15px) saturate(150%);
+  // -webkit-backdrop-filter: blur(15px) saturate(150%);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
 
   &.fullscreen {
     -webkit-app-region: no-drag;

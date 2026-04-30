@@ -2,6 +2,13 @@
   <div :class="$style.container">
     <div :class="[$style.search, {[$style.active]: focus}, {[$style.big]: big}, {[$style.small]: small}]">
       <div :class="$style.form">
+        <button type="button" @click="handleSearch" :class="$style.searchBtn">
+          <slot>
+            <svg version="1.1" xmlns="http://www.w3.org/2000/svg" xlink="http://www.w3.org/1999/xlink" height="100%" viewBox="0 0 30.239 30.239" space="preserve">
+              <use xlink:href="#icon-search" />
+            </svg>
+          </slot>
+        </button>
         <input
           ref="dom_input"
           v-model.trim="text"
@@ -17,19 +24,12 @@
           @contextmenu="handleContextMenu"
         >
         <transition enter-active-class="animated zoomIn" leave-active-class="animated zoomOut">
-          <button v-show="text" type="button" @click="handleClearList">
+          <button v-show="text" type="button" @click="handleClearList" :class="$style.clearBtn">
             <svg version="1.1" xmlns="http://www.w3.org/2000/svg" xlink="http://www.w3.org/1999/xlink" height="100%" viewBox="0 0 24 24" space="preserve">
               <use xlink:href="#icon-window-close" />
             </svg>
           </button>
         </transition>
-        <button type="button" @click="handleSearch">
-          <slot>
-            <svg version="1.1" xmlns="http://www.w3.org/2000/svg" xlink="http://www.w3.org/1999/xlink" height="100%" viewBox="0 0 30.239 30.239" space="preserve">
-              <use xlink:href="#icon-search" />
-            </svg>
-          </slot>
-        </button>
       </div>
       <div v-if="list" :class="$style.list" :style="listStyle">
         <ul ref="dom_list" @mouseleave="selectIndex = -1">
@@ -211,15 +211,17 @@ export default {
 .search {
   position: absolute;
   width: 100%;
-  border-radius: @form-radius;
-  transition: box-shadow .4s ease, background-color @transition-normal;
+  border-radius: 20px;
+  transition: all .4s cubic-bezier(0.2, 0.8, 0.2, 1);
   display: flex;
   flex-flow: column nowrap;
-  background-color: var(--color-primary-light-300-alpha-700);
+  background-color: var(--color-primary-light-100-alpha-800);
+  border: 1px solid transparent;
 
   &.active {
-    background-color: var(--color-primary-light-600-alpha-100);
-    box-shadow: 0 1px 5px 0 rgba(0,0,0,.2);
+    background-color: var(--color-primary-light-1000);
+    box-shadow: 0 8px 24px 0 rgba(0,0,0,.08);
+    border-color: var(--color-primary-alpha-400);
     .form {
       input {
         border-bottom-left-radius: 0;
@@ -236,49 +238,49 @@ export default {
     position: relative;
     input {
       flex: auto;
-      // border: 1px solid;
-      border-top-left-radius: 3px;
-      border-bottom-left-radius: 3px;
       background-color: transparent;
-      // border-bottom: 2px solid var(--color-primary);
-      // border-color: var(--color-primary);
       border: none;
       min-width: 0;
-
       outline: none;
-      // height: @height-toolbar * .7;
-      padding: 0 5px;
+      padding: 0 5px 0 0;
       overflow: hidden;
       font-size: 13.5px;
       line-height: @height-toolbar * 0.52 + 5px;
       &::placeholder {
-        color: var(--color-button-font);
+        color: var(--color-font-label);
         font-size: .98em;
       }
     }
     button {
       flex: none;
       border: none;
-      // background-color: @color-search-form-background;
       background-color: transparent;
       outline: none;
       cursor: pointer;
       height: 100%;
-      padding: 6px 7px;
-      color: var(--color-button-font);
-      transition: background-color .2s ease;
-
-      &:last-child {
-        border-top-right-radius: 3px;
-        border-bottom-right-radius: 3px;
-      }
+      color: var(--color-font-label);
+      transition: color .2s ease;
 
       &:hover {
-        background-color: var(--color-button-background-hover);
+        color: var(--color-primary);
       }
       &:active {
-        background-color: var(--color-button-background-active);
+        color: var(--color-primary-dark-100);
       }
+    }
+    
+    .searchBtn {
+      padding: 8px 8px 8px 12px;
+      border-top-left-radius: 20px;
+      border-bottom-left-radius: 20px;
+      svg { width: 14px; height: 14px; }
+    }
+    
+    .clearBtn {
+      padding: 8px 12px 8px 8px;
+      border-top-right-radius: 20px;
+      border-bottom-right-radius: 20px;
+      svg { width: 12px; height: 12px; }
     }
   }
   .list {

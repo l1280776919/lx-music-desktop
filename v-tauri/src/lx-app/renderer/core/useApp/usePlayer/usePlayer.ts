@@ -128,7 +128,18 @@ export default () => {
     // setLoopPlay(newValue == 'singleLoop')
     if (playedList.length) clearPlayedList()
     if (newValue == 'random' && playMusicInfo.musicInfo && !playMusicInfo.isTempPlay) addPlayedList({ ...(playMusicInfo as LX.Player.PlayMusicInfo) })
-  })
+    
+    // 同步到播放器插件 (单曲循环时设置 loop = true)
+    if (newValue == 'singleLoop') {
+      import('@renderer/plugins/player').then(({ setLoopPlay }) => {
+        setLoopPlay(true)
+      })
+    } else {
+      import('@renderer/plugins/player').then(({ setLoopPlay }) => {
+        setLoopPlay(false)
+      })
+    }
+  }, { immediate: true })
 
   // setLoopPlay(appSetting['player.togglePlayMethod'] == 'singleLoop')
 

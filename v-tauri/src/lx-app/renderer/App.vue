@@ -128,7 +128,7 @@ body {
   position: relative;
   display: flex;
   height: 100%;
-  background-color: var(--color-app-background);
+  background-color: transparent;
 }
 
 #left {
@@ -140,12 +140,15 @@ body {
   display: flex;
   flex-flow: column nowrap;
   transition: background-color @transition-normal;
-  background-color: var(--color-main-background);
+  background-color: rgba(255, 255, 255, 0.75);
+  backdrop-filter: blur(40px) saturate(220%);
+  -webkit-backdrop-filter: blur(40px) saturate(220%);
 
   border-top-left-radius: @radius-border;
   border-bottom-left-radius: @radius-border;
+  border-left: 1px solid rgba(255, 255, 255, 0.5);
   overflow: hidden;
-  box-shadow: 0px 0px 4px rgba(0, 0, 0, 0.1);
+  box-shadow: -2px 0px 10px rgba(0, 0, 0, 0.03);
 }
 #toolbar, #player {
   flex: none;

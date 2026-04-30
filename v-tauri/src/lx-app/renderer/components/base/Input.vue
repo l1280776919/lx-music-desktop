@@ -93,14 +93,15 @@ export default {
 
 .input {
   display: inline-block;
-  border: none;
-  border-radius: @form-radius;
-  padding: 7px 8px;
-  color: var(--color-button-font);
+  border: 1px solid transparent;
+  border-radius: 6px;
+  padding: 8px 12px;
+  color: var(--color-font);
   outline: none;
-  transition: background-color 0.2s ease;
-  background-color: var(--color-primary-background);
-  font-size: 13.3px;
+  transition: all 0.2s ease;
+  background-color: var(--color-primary-light-100-alpha-800);
+  font-size: 14px;
+  box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.02);
 
   &::-webkit-outer-spin-button,
   &::-webkit-inner-spin-button {
@@ -108,21 +109,30 @@ export default {
     margin: 0;
   }
 
-  &[disabled] {
-    opacity: .4;
+  &::placeholder {
+    color: var(--color-font-label);
   }
 
-  &:hover, &:focus {
-    background-color: var(--color-primary-background-hover);
+  &[disabled] {
+    opacity: .4;
+    cursor: default;
   }
-  &:active {
-    background-color: var(--color-primary-background-active);
+
+  &:hover {
+    background-color: var(--color-primary-light-100-alpha-700);
+  }
+  
+  &:focus {
+    background-color: var(--color-primary-light-1000);
+    border-color: var(--color-primary);
+    box-shadow: 0 0 0 3px var(--color-primary-alpha-800);
   }
 }
 
 .min {
-  padding: 3px 8px;
+  padding: 4px 8px;
   font-size: 12px;
+  border-radius: 4px;
 }
 
 </style>

@@ -95,12 +95,11 @@ export default {
 
 .progress {
   width: 100%;
-  height: 5px;
+  height: 100%;
   overflow: hidden;
   transition: @transition-normal;
   transition-property: background-color;
   background-color: var(--color-primary-light-100-alpha-800);
-  // background-color: #f5f5f5;
   position: relative;
   border-radius: 40px;
 }

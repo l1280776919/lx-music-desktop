@@ -1,12 +1,13 @@
 <template>
-  <div :class="$style.checkbox">
+  <div :class="[$style.checkbox, { [$style.isRadio]: need }]">
     <input
       :id="id" ref="dom_input" :type="need ? 'radio' : 'checkbox'" :aria-hidden="true" :checked="checked"
       :class="$style.input" :disabled="disabled" :value="value" :name="name" @input="handleInput($event.target.checked)"
     >
     <label :for="id" :class="$style.content">
       <div :class="$style.container" :role="need ? 'radio' : 'checkbox'" tabindex="0" :aria-label="ariaLabel || label" :aria-checked="checked" :aria-disabled="disabled" @keydown.enter.space.stop.prevent="handleToggle">
-        <svg version="1.1" :class="$style.icon" xmlns="http://www.w3.org/2000/svg" xlink="http://www.w3.org/1999/xlink" height="100%" width="100%" viewBox="0 32 448 448" space="preserve">
+        <div :class="$style.radioDot" v-if="need"></div>
+        <svg v-else version="1.1" :class="$style.icon" xmlns="http://www.w3.org/2000/svg" xlink="http://www.w3.org/1999/xlink" height="100%" width="100%" viewBox="0 32 448 448" space="preserve">
           <use xlink:href="#icon-check-true" />
         </svg>
       </div>
@@ -124,6 +125,13 @@ export default {
   display: inline-block;
   // font-size: 56px;
 }
+.isRadio {
+  .container {
+    &:after {
+      border-radius: 50% !important;
+    }
+  }
+}
 .input {
   display: none;
   &[disabled] {
@@ -139,11 +147,15 @@ export default {
       .container {
         &:after {
           border-color: var(--color-primary-font);
+          background-color: var(--color-primary-font);
         }
       }
       .icon {
         transform: scale(1);
-        // opacity: 1;
+        fill: var(--color-primary-font-active, #fff);
+      }
+      .radioDot {
+        transform: scale(1);
       }
     }
   }
@@ -151,16 +163,19 @@ export default {
 .content {
   display: flex;
   align-items: center;
+  transition: opacity 0.2s ease;
 }
 .container {
   flex: none;
   position: relative;
-  width: 1em;
-  height: 1em;
+  width: 1.2em;
+  height: 1.2em;
   cursor: pointer;
   display: flex;
+  align-items: center;
+  justify-content: center;
   color: var(--color-primary);
-  // border: 1px solid #ccc;
+  
   &:after {
     position: absolute;
     content: ' ';
@@ -169,23 +184,46 @@ export default {
     left: 0;
     right: 0;
     border: 1px solid var(--color-font-label);
-    transition: border-color 0.2s ease;
-    border-radius: 2px;
+    transition: all 0.25s ease;
+    border-radius: 4px;
+    background-color: transparent;
+  }
+  &:hover:after {
+    border-color: var(--color-primary-font);
   }
 }
 .icon {
-  transition: 0.3s ease;
-  transition-property: transform;
+  position: relative;
+  z-index: 1;
+  transition: 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+  transition-property: transform, fill;
   transform: scale(0);
-  border-radius: 2px;
-  // opacity: 0;
+  border-radius: 4px;
+  width: 70%;
+  height: 70%;
+}
+.radioDot {
+  position: relative;
+  z-index: 1;
+  width: 40%;
+  height: 40%;
+  border-radius: 50%;
+  background-color: var(--color-primary-font-active, #fff);
+  transform: scale(0);
+  transition: transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
 }
 
 .label {
   flex: auto;
-  margin-left: 5px;
+  margin-left: 8px;
   line-height: 1.5;
   cursor: pointer;
+  user-select: none;
+  transition: color 0.2s ease;
+}
+
+.checkbox:hover .label {
+  color: var(--color-primary);
 }
 
 </style>

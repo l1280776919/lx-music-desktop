@@ -229,7 +229,7 @@ export default {
 // }
 
 .setting {
-  padding: 0 15px 15px;
+  padding: 0 20px 20px;
   font-size: 14px;
   box-sizing: border-box;
   overflow-y: auto;
@@ -239,9 +239,25 @@ export default {
 
   :global {
     dt {
-      border-left: 5px solid var(--color-primary-alpha-700);
-      padding: 3px 7px;
-      margin: 15px 0;
+      font-size: 20px;
+      font-weight: 700;
+      color: var(--color-font);
+      padding: 10px 0;
+      margin: 20px 0 15px;
+      border: none;
+      position: relative;
+      display: inline-block;
+
+      &::after {
+        content: '';
+        position: absolute;
+        bottom: 0;
+        left: 0;
+        width: 40px;
+        height: 4px;
+        background-color: var(--color-primary);
+        border-radius: 2px;
+      }
 
       + dd h3 {
         margin-top: 0;
@@ -249,23 +265,35 @@ export default {
     }
 
     dd {
-      // margin-left: 15px;
-      // font-size: 13px;
-      > div {
-        padding: 0 15px;
+      background-color: var(--color-primary-light-1000);
+      border-radius: 12px;
+      padding: 20px;
+      margin-bottom: 20px;
+      box-shadow: 0 4px 16px rgba(0, 0, 0, 0.03);
+      border: 1px solid rgba(0, 0, 0, 0.02);
+      transition: box-shadow 0.3s ease;
+
+      &:hover {
+        box-shadow: 0 8px 24px rgba(0, 0, 0, 0.06);
       }
 
+      > div {
+        padding: 0;
+      }
     }
     h3 {
-      font-size: 12px;
-      margin: 25px 0 15px;
+      font-size: 14px;
+      font-weight: 600;
+      margin: 0 0 16px;
+      color: var(--color-font);
+      opacity: 0.9;
     }
     .p {
-      padding: 3px 0;
-      line-height: 1.3;
+      padding: 6px 0;
+      line-height: 1.5;
       .btn {
         + .btn {
-          margin-left: 10px;
+          margin-left: 12px;
         }
       }
     }

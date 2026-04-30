@@ -57,11 +57,12 @@ const icon = computed(() => {
 .btnContent {
   flex: none;
   height: 100%;
+  display: flex;
+  align-items: center;
 }
 
 .btn {
   position: relative;
-  // color: var(--color-button-font);
   justify-content: center;
   align-items: center;
   transition: color @transition-normal;
@@ -69,21 +70,28 @@ const icon = computed(() => {
   background-color: transparent;
   border: none;
   width: 24px;
+  height: 24px;
   display: flex;
   flex-flow: column nowrap;
   padding: 0;
+  border-radius: 50%;
+  transition: background-color 0.2s ease, opacity 0.2s ease, transform 0.1s ease;
 
   svg {
     transition: opacity @transition-fast;
     opacity: .6;
     filter: drop-shadow(0 0 1px rgba(0, 0, 0, 0.2));
+    width: 90%;
+    height: 90%;
   }
   &:hover {
+    background-color: rgba(0, 0, 0, 0.05);
     svg {
-      opacity: .9;
+      opacity: 1;
     }
   }
   &:active {
+    transform: scale(0.92);
     svg {
       opacity: 1;
     }

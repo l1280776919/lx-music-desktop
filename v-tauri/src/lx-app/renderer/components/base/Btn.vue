@@ -31,36 +31,53 @@ export default {
 @import '@renderer/assets/styles/layout.less';
 
 .btn {
-  display: inline-block;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   border: none;
-  border-radius: @form-radius;
+  border-radius: 6px;
   cursor: pointer;
-  padding: 8px 15px;
+  padding: 8px 18px;
   color: var(--color-button-font);
   outline: none;
-  transition: background-color 0.2s ease;
+  transition: all 0.2s ease;
   background-color: var(--color-button-background);
   font-size: 14px;
+  font-weight: 500;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.05);
+
   &[disabled] {
     opacity: .4;
     cursor: default;
+    box-shadow: none;
   }
 
   &.outline {
     background-color: transparent;
+    border: 1px solid var(--color-primary-alpha-400);
+    box-shadow: none;
+    
+    &:hover {
+      border-color: var(--color-primary);
+    }
   }
 
-  &:hover {
+  &:hover:not([disabled]) {
     background-color: var(--color-button-background-hover);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+    transform: translateY(-1px);
   }
-  &:active {
+  &:active:not([disabled]) {
     background-color: var(--color-button-background-active);
+    transform: translateY(1px);
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
   }
 }
 
 .min {
-  padding: 3px 8px;
+  padding: 4px 12px;
   font-size: 12px;
+  border-radius: 4px;
 }
 
 </style>

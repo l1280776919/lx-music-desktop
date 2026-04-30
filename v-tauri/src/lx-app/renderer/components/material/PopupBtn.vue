@@ -60,7 +60,10 @@ defineExpose({
 @import '@renderer/assets/styles/layout.less';
 .content {
   position: relative;
-  display: inline-block;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
 }
 
 </style>
