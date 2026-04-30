@@ -36,6 +36,16 @@ const toResponse = (statusCode: number, statusMessage: string, headers: Record<s
   }
 }
 
+const withRedirectLocation =(
+  response: ReturnType<typeof toResponse>,
+  requestUrl: string,
+  finalUrl?: string,
+) => {
+  if (!finalUrl || finalUrl == requestUrl) return response
+  if (response.headers.location == null) response.headers.location = finalUrl
+  return response
+}
+
 const normalizeHeaders = (headers: Record<string, unknown>) => {
   return Object.fromEntries(
     Object.entries(headers)
@@ -92,7 +102,11 @@ const request = (method: string, url: string, data: any, options: any = {}, call
         proxy: normalizeProxy(options.proxy),
       },
     }).then((response) => {
-      const resp = toResponse(response.statusCode, response.statusMessage, response.headers, response.bytes, response.body, response.raw)
+      const resp = withRedirectLocation(
+        toResponse(response.statusCode, response.statusMessage, response.headers, response.bytes, response.body, response.raw),
+        url,
+        response.finalUrl,
+      )
       ;(resp as any).finalUrl = response.finalUrl
       ;(resp as any).httpVersion = response.httpVersion
       callback(null, resp, resp.body)
