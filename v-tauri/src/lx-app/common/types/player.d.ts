@@ -7,9 +7,12 @@ declare namespace LX {
 
     type StatusButtonActions = 'unCollect'
     | 'collect'
+    | 'dislike'
     | 'prev'
     | 'pause'
     | 'play'
+    | 'stop'
+    | 'togglePlay'
     | 'next'
     | 'seek'
     | 'volume'

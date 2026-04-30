@@ -6,7 +6,17 @@ import { loveList } from '@renderer/store/list/state'
 import { addListMusics, removeListMusics, checkListExistMusic } from '@renderer/store/list/action'
 import { playMusicInfo, musicInfo } from '@renderer/store/player/state'
 import { throttle } from '@common/utils'
-import { pause, play, playNext, playPrev } from '@renderer/core/player'
+import {
+  collectMusicLocal,
+  dislikeMusicLocal,
+  pauseLocal,
+  playLocal,
+  playNextLocal,
+  playPrevLocal,
+  stopLocal,
+  togglePlayLocal,
+  uncollectMusicLocal,
+} from '@renderer/core/player'
 import { playProgress } from '@renderer/store/player/playProgress'
 import { appSetting } from '@renderer/store/setting'
 import { lyric } from '@renderer/store/player/lyric'
@@ -87,26 +97,33 @@ export default () => {
   const rTaskbarThumbarClick = onPlayerAction(async({ params: { action, data } }) => {
     switch (action) {
       case 'play':
-        play()
+        playLocal()
         break
       case 'pause':
-        pause()
+        pauseLocal()
+        break
+      case 'stop':
+        stopLocal()
+        break
+      case 'togglePlay':
+        togglePlayLocal()
         break
       case 'prev':
-        void playPrev()
+        void playPrevLocal()
         break
       case 'next':
-        void playNext()
+        void playNextLocal()
         break
       case 'collect':
-        if (!playMusicInfo.musicInfo) return
-        void addListMusics(loveList.id, ['progress' in playMusicInfo.musicInfo ? playMusicInfo.musicInfo.metadata.musicInfo : playMusicInfo.musicInfo])
+        collectMusicLocal()
         if (await updateCollectStatus()) sendPlayerStatus({ collect })
         break
       case 'unCollect':
-        if (!playMusicInfo.musicInfo) return
-        void removeListMusics({ listId: loveList.id, ids: ['progress' in playMusicInfo.musicInfo ? playMusicInfo.musicInfo.metadata.musicInfo.id : playMusicInfo.musicInfo.id] })
+        uncollectMusicLocal()
         if (await updateCollectStatus()) sendPlayerStatus({ collect })
+        break
+      case 'dislike':
+        void dislikeMusicLocal()
         break
       case 'seek': {
         let progress = data as number

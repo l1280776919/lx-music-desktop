@@ -2,6 +2,12 @@ import { DISLIKE_EVENT_NAME, PLAYER_EVENT_NAME, WIN_MAIN_RENDERER_EVENT_NAME } f
 import iconv from 'iconv-lite'
 import { Buffer } from 'buffer'
 import { inflate as pakoInflate } from 'pako'
+import {
+  dispatchPlayerAction as dispatchTauriPlayerAction,
+  onPlayerAction as onTauriPlayerAction,
+  sendPlayerStatus as sendTauriPlayerStatus,
+  setPlayerAction as setTauriPlayerAction,
+} from './ipc'
 import { hasTauriContext, safeInvoke } from './runtime'
 
 type Listener = (...args: any[]) => any
@@ -20,6 +26,9 @@ const emit = (name: string, params?: any) => {
   const event = { ports: [] } as Electron.IpcRendererEvent
   listeners.get(name)?.forEach(listener => listener(event, params))
 }
+onTauriPlayerAction(({ params }) => {
+  emit(WIN_MAIN_RENDERER_EVENT_NAME.player_action_on_button_click, params)
+})
 
 const LIST_STORE = 'tauri_list_data'
 const DISLIKE_STORE = 'tauri_dislike_data'
@@ -292,6 +301,19 @@ export async function rendererInvoke<T, V>(name: string, params?: T): Promise<V>
     }
     case WIN_MAIN_RENDERER_EVENT_NAME.handle_tx_decode_lyric: {
       return { lyric: '', tlyric: '', rlyric: '' } as V
+    }
+    case WIN_MAIN_RENDERER_EVENT_NAME.player_status: {
+      await sendTauriPlayerStatus(params as Partial<LX.Player.Status>)
+      return undefined as V
+    }
+    case WIN_MAIN_RENDERER_EVENT_NAME.player_action_set_buttons: {
+      await setTauriPlayerAction(params as LX.TaskBarButtonFlags)
+      return undefined as V
+    }
+    case WIN_MAIN_RENDERER_EVENT_NAME.player_action_dispatch: {
+      const { action, data } = params as { action: LX.Player.StatusButtonActions, data?: unknown }
+      await dispatchTauriPlayerAction(action, data)
+      return undefined as V
     }
     default:
       return undefined as V

@@ -17,6 +17,7 @@ import { getMusicUrl, getPicPath, getLyricInfo } from '../music/index'
 import { filterList } from './utils'
 import { requestMsg } from '@renderer/utils/message'
 import { getRandom } from '@renderer/utils/index'
+import { dispatchPlayerAction } from '@renderer/utils/ipc'
 import { addListMusics, removeListMusics } from '@renderer/store/list/action'
 import { loveList } from '@renderer/store/list/state'
 import { addDislikeInfo } from '@renderer/core/dislikeList'
@@ -43,7 +44,7 @@ const createDelayNextTimeout = (delay: number) => {
       timeout = null
       if (window.lx.isPlayedStop) return
       console.warn('delay next timeout timeout', delay)
-      void playNext(true)
+      void playNextLocal(true)
     }, delay)
   }
 
@@ -265,7 +266,7 @@ export const playList = (listId: string, index: number) => {
 }
 
 const handleToggleStop = () => {
-  stop()
+  stopLocal()
   setTimeout(() => {
     setPlayMusicInfo(null, null)
   })
@@ -374,7 +375,7 @@ const handlePlayNext = (playMusicInfo: LX.Player.PlayMusicInfo) => {
  * @param isAutoToggle 是否自动切换
  * @returns
  */
-export const playNext = async(isAutoToggle = false): Promise<void> => {
+export const playNextLocal = async(isAutoToggle = false): Promise<void> => {
   console.log('skip next', isAutoToggle)
   if (tempPlayList.length) { // 如果稍后播放列表存在歌曲则直接播放改列表的歌曲
     const playMusicInfo = tempPlayList[0]
@@ -488,7 +489,7 @@ export const playNext = async(isAutoToggle = false): Promise<void> => {
 /**
  * 上一曲
  */
-export const playPrev = async(isAutoToggle = false): Promise<void> => {
+export const playPrevLocal = async(isAutoToggle = false): Promise<void> => {
   if (playMusicInfo.musicInfo == null) {
     handleToggleStop()
     return
@@ -580,7 +581,7 @@ export const playPrev = async(isAutoToggle = false): Promise<void> => {
 /**
  * 恢复播放
  */
-export const play = () => {
+export const playLocal = () => {
   window.lx.isPlayedStop &&= false
   if (playMusicInfo.musicInfo == null) return
   if (isEmpty()) {
@@ -593,14 +594,14 @@ export const play = () => {
 /**
  * 暂停播放
  */
-export const pause = () => {
+export const pauseLocal = () => {
   setPause()
 }
 
 /**
  * 停止播放
  */
-export const stop = () => {
+export const stopLocal = () => {
   setStop()
   setTimeout(() => {
     window.app_event.stop()
@@ -610,19 +611,19 @@ export const stop = () => {
 /**
  * 播放、暂停播放切换
  */
-export const togglePlay = () => {
+export const togglePlayLocal = () => {
   window.lx.isPlayedStop &&= false
   if (isPlay.value) {
-    pause()
+    pauseLocal()
   } else {
-    play()
+    playLocal()
   }
 }
 
 /**
  * 收藏当前播放的歌曲
  */
-export const collectMusic = () => {
+export const collectMusicLocal = () => {
   if (!playMusicInfo.musicInfo) return
   void addListMusics(loveList.id, ['progress' in playMusicInfo.musicInfo ? playMusicInfo.musicInfo.metadata.musicInfo : playMusicInfo.musicInfo])
 }
@@ -630,7 +631,7 @@ export const collectMusic = () => {
 /**
  * 取消收藏当前播放的歌曲
  */
-export const uncollectMusic = () => {
+export const uncollectMusicLocal = () => {
   if (!playMusicInfo.musicInfo) return
   void removeListMusics({ listId: loveList.id, ids: ['progress' in playMusicInfo.musicInfo ? playMusicInfo.musicInfo.metadata.musicInfo.id : playMusicInfo.musicInfo.id] })
 }
@@ -638,9 +639,19 @@ export const uncollectMusic = () => {
 /**
  * 不喜欢当前播放的歌曲
  */
-export const dislikeMusic = async() => {
+export const dislikeMusicLocal = async() => {
   if (!playMusicInfo.musicInfo) return
   const minfo = 'progress' in playMusicInfo.musicInfo ? playMusicInfo.musicInfo.metadata.musicInfo : playMusicInfo.musicInfo
   await addDislikeInfo([{ name: minfo.name, singer: minfo.singer }])
-  await playNext(true)
+  await playNextLocal(true)
 }
+
+export const play = async() => { dispatchPlayerAction('play') }
+export const pause = async() => { dispatchPlayerAction('pause') }
+export const stop = async() => { dispatchPlayerAction('stop') }
+export const togglePlay = async() => { dispatchPlayerAction('togglePlay') }
+export const playNext = async() => { dispatchPlayerAction('next') }
+export const playPrev = async() => { dispatchPlayerAction('prev') }
+export const collectMusic = async() => { dispatchPlayerAction('collect') }
+export const uncollectMusic = async() => { dispatchPlayerAction('unCollect') }
+export const dislikeMusic = async() => { dispatchPlayerAction('dislike') }

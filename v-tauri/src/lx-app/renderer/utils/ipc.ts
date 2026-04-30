@@ -503,6 +503,9 @@ export const onPlayerAction = (listener: LX.IpcRendererEventListenerParams<{
     rendererOff(WIN_MAIN_RENDERER_EVENT_NAME.player_action_on_button_click, listener)
   }
 }
+export const dispatchPlayerAction = (action: LX.Player.StatusButtonActions, data?: unknown) => {
+  rendererSend(WIN_MAIN_RENDERER_EVENT_NAME.player_action_dispatch, { action, data })
+}
 // export const setTaskbarThumbnailClip = async(clip: Electron.Rectangle) => {
 //   await rendererInvoke(WIN_MAIN_RENDERER_EVENT_NAME.taskbar_set_thumbnail_clip, clip)
 // }

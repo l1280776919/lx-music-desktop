@@ -1,4 +1,5 @@
 import { openDirInExplorer as revealInExplorer } from './electron'
+import { listen, type UnlistenFn } from '@tauri-apps/api/event'
 import { hasTauriContext, safeInvoke } from './runtime'
 import {
   cancelUserApiRuntimeRequest,
@@ -15,8 +16,17 @@ import builtinThemes from '@common/theme/index.json'
 type RemoveListener = () => void
 type Listener<T = any> = (event: { params: T }) => void
 type UserApiInfo = LX.UserApi.UserApiInfo & { script?: string }
+type PlayerActionPayload = {
+  action: LX.Player.StatusButtonActions
+  data?: any
+}
+type PlayerSnapshot = {
+  status: Partial<LX.Player.Status>
+  buttons: LX.TaskBarButtonFlags
+}
 
 const listeners = new Map<string, Set<Listener>>()
+let playerActionUnlistenPromise: Promise<UnlistenFn | null> | null = null
 const MUSIC_URL_STORE = 'tauri_music_url_cache'
 const DOWNLOAD_TASK_STORE = 'tauri_download_task_store'
 const emit = <T>(name: string, params: T) => {
@@ -29,6 +39,12 @@ const on = <T>(name: string, listener: Listener<T>): RemoveListener => {
   return () => {
     set.delete(listener as Listener)
   }
+}
+const ensurePlayerActionListener = () => {
+  if (!hasTauriContext() || playerActionUnlistenPromise) return
+  playerActionUnlistenPromise = listen<PlayerActionPayload>('player_action', (event) => {
+    emit('playerAction', event.payload)
+  }).then(unlisten => unlisten).catch(() => null)
 }
 const browserStoreKey = (name: string) => `lx-tauri:${name}`
 
@@ -236,9 +252,39 @@ export const userApiRequestCancel = (requestKey: string) => {
   cancelUserApiRuntimeRequest(requestKey)
 }
 
-export const sendPlayerStatus = (_status: Partial<LX.Player.Status>) => {}
-export const onPlayerAction = (_listener: Listener<any>): RemoveListener => () => {}
-export const setPlayerAction = (_buttons: LX.TaskBarButtonFlags) => {}
+export const sendPlayerStatus = async(status: Partial<LX.Player.Status>) => {
+  if (!hasTauriContext()) return
+  await safeInvoke<PlayerSnapshot>('player_update_status', { status }, undefined)
+}
+export const onPlayerAction = (listener: Listener<PlayerActionPayload>): RemoveListener => {
+  ensurePlayerActionListener()
+  return on('playerAction', listener)
+}
+export const setPlayerAction = async(buttons: LX.TaskBarButtonFlags) => {
+  if (!hasTauriContext()) return
+  await safeInvoke<PlayerSnapshot>('player_set_buttons', { buttons }, undefined)
+}
+export const dispatchPlayerAction = async(action: LX.Player.StatusButtonActions, data?: unknown) => {
+  if (!hasTauriContext()) {
+    emit('playerAction', { action, data })
+    return
+  }
+  await safeInvoke<PlayerSnapshot>('player_dispatch_action', {
+    payload: { action, data },
+  }, undefined)
+}
+export const playerPlay = async() => { await safeInvoke<PlayerSnapshot>('player_play', {}, undefined) }
+export const playerPause = async() => { await safeInvoke<PlayerSnapshot>('player_pause', {}, undefined) }
+export const playerStop = async() => { await safeInvoke<PlayerSnapshot>('player_stop', {}, undefined) }
+export const playerTogglePlay = async() => { await safeInvoke<PlayerSnapshot>('player_toggle_play', {}, undefined) }
+export const playerPrev = async() => { await safeInvoke<PlayerSnapshot>('player_prev', {}, undefined) }
+export const playerNext = async() => { await safeInvoke<PlayerSnapshot>('player_next', {}, undefined) }
+export const playerSeek = async(progress: number) => { await safeInvoke<PlayerSnapshot>('player_seek', { progress }, undefined) }
+export const playerSetVolume = async(volume: number) => { await safeInvoke<PlayerSnapshot>('player_set_volume', { volume }, undefined) }
+export const playerSetMute = async(mute: boolean) => { await safeInvoke<PlayerSnapshot>('player_set_mute', { mute }, undefined) }
+export const playerCollect = async() => { await safeInvoke<PlayerSnapshot>('player_collect', {}, undefined) }
+export const playerUncollect = async() => { await safeInvoke<PlayerSnapshot>('player_uncollect', {}, undefined) }
+export const playerDislike = async() => { await safeInvoke<PlayerSnapshot>('player_dislike', {}, undefined) }
 export const sendOpenAPIAction = async(_action: any) => ({ status: false })
 
 export const saveLastStartInfo = (version: string) => { void dataStoreSet(DATA_KEYS.lastStartInfo, version) }

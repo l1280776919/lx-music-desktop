@@ -144,6 +144,7 @@ const modules = {
     player_action_set_buttons: 'player_action_set_buttons',
     // player_action_set_thumbnail_clip: 'player_action_set_thumbnail_clip',
     player_action_on_button_click: 'player_action_on_button_click',
+    player_action_dispatch: 'player_action_dispatch',
 
     get_themes: 'get_themes',
     save_theme: 'save_theme',

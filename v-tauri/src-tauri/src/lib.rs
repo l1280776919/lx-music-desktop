@@ -1,3 +1,5 @@
+mod player;
+
 use rfd::FileDialog;
 use reqwest::blocking::Client;
 use reqwest::header::{HeaderMap, HeaderName, HeaderValue};
@@ -424,6 +426,7 @@ fn rsa_public_encrypt(payload: RsaEncryptPayload) -> Result<Vec<u8>, String> {
 pub fn run() {
     tauri::Builder::default()
         .plugin(tauri_plugin_opener::init())
+        .manage(player::PlayerBackendState::new())
         .invoke_handler(tauri::generate_handler![
             store_get,
             store_set,
@@ -449,6 +452,22 @@ pub fn run() {
             app_quit,
             http_request,
             rsa_public_encrypt,
+            player::player_update_status,
+            player::player_set_buttons,
+            player::player_get_snapshot,
+            player::player_dispatch_action,
+            player::player_play,
+            player::player_pause,
+            player::player_stop,
+            player::player_toggle_play,
+            player::player_prev,
+            player::player_next,
+            player::player_seek,
+            player::player_set_volume,
+            player::player_set_mute,
+            player::player_collect,
+            player::player_uncollect,
+            player::player_dislike,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
