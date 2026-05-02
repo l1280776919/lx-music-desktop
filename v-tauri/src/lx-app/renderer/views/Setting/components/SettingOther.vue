@@ -65,6 +65,14 @@ dd
     .p
       base-btn.btn(min @click="handleClearListData") {{ $t('setting__other_listdata_clear_btn') }}
 
+dd
+  h3#other_music_log {{ $t('setting__other_music_log') }}
+  div
+    .p {{ $t('setting__other_music_log_label') }}
+    .p
+      base-btn.btn(min @click="isShowMusicDiagnosticLog = true") {{ $t('setting__other_music_log_show_btn') }}
+  MusicDiagnosticLogModal(v-model="isShowMusicDiagnosticLog")
+
 </template>
 
 <script>
@@ -83,12 +91,14 @@ import { appSetting, updateSetting } from '@renderer/store/setting'
 import { overwriteListFull } from '@renderer/store/list/listManage'
 import { dislikeRuleCount } from '@renderer/store/dislikeList'
 import DislikeListModal from './DislikeListModal.vue'
+import MusicDiagnosticLogModal from './MusicDiagnosticLogModal.vue'
 import { TRAY_AUTO_ID } from '@common/constants'
 
 export default {
   name: 'SettingOther',
   components: {
     DislikeListModal,
+    MusicDiagnosticLogModal,
   },
   setup() {
     const t = useI18n()
@@ -159,6 +169,7 @@ export default {
     refreshMusicUrlCount()
 
     const isShowDislikeList = ref(false)
+    const isShowMusicDiagnosticLog = ref(false)
 
     const lyricRawCount = ref(0)
     const isDisabledLyricRawCacheClear = ref(false)
@@ -230,6 +241,7 @@ export default {
 
       dislikeRuleCount,
       isShowDislikeList,
+      isShowMusicDiagnosticLog,
 
       lyricRawCount,
       isDisabledLyricRawCacheClear,

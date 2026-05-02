@@ -24,6 +24,34 @@ type PlayerSnapshot = {
   status: Partial<LX.Player.Status>
   buttons: LX.TaskBarButtonFlags
 }
+type PlayerTogglePlayInfo = {
+  musicInfo: LX.Music.MusicInfo | LX.Download.ListItem
+  listId: string | null
+  isTempPlay: boolean
+}
+type PlayerToggleResolvePayload = {
+  isNext: boolean
+  isAutoToggle: boolean
+  togglePlayMethod: string
+  currentListId: string | null
+  currentList: Array<LX.Music.MusicInfo | LX.Download.ListItem>
+  playedList: PlayerTogglePlayInfo[]
+  tempPlayList: PlayerTogglePlayInfo[]
+  currentMusicInfo: LX.Music.MusicInfo | LX.Download.ListItem | null
+  playerMusicInfo: LX.Music.MusicInfo | LX.Download.ListItem | null
+  randomNextInfo: PlayerTogglePlayInfo | null
+  dislikeInfo: {
+    names: string[]
+    musicNames: string[]
+    singerNames: string[]
+  }
+}
+type PlayerToggleResolveResult = {
+  selected: PlayerTogglePlayInfo | null
+  cleanedPlayedList: PlayerTogglePlayInfo[]
+  consumeTempPlay: boolean
+  shouldStop: boolean
+}
 
 const listeners = new Map<string, Set<Listener>>()
 let playerActionUnlistenPromise: Promise<UnlistenFn | null> | null = null
@@ -148,7 +176,6 @@ export const onThemeChange = (listener: Listener<LX.ThemeSetting>): RemoveListen
   const media = window.matchMedia('(prefers-color-scheme: dark)')
   const handler = () => emitTheme()
   media.addEventListener?.('change', handler)
-  emitTheme()
   return () => media.removeEventListener?.('change', handler)
 }
 
@@ -285,6 +312,10 @@ export const playerSetMute = async(mute: boolean) => { await safeInvoke<PlayerSn
 export const playerCollect = async() => { await safeInvoke<PlayerSnapshot>('player_collect', {}, undefined) }
 export const playerUncollect = async() => { await safeInvoke<PlayerSnapshot>('player_uncollect', {}, undefined) }
 export const playerDislike = async() => { await safeInvoke<PlayerSnapshot>('player_dislike', {}, undefined) }
+export const resolvePlayerToggle = async(payload: PlayerToggleResolvePayload): Promise<PlayerToggleResolveResult | null> => {
+  if (!hasTauriContext()) return null
+  return safeInvoke<PlayerToggleResolveResult | null>('player_resolve_toggle', { payload }, null)
+}
 export const sendOpenAPIAction = async(_action: any) => ({ status: false })
 
 export const saveLastStartInfo = (version: string) => { void dataStoreSet(DATA_KEYS.lastStartInfo, version) }
@@ -323,6 +354,28 @@ export const openSaveDir = async(options: any) => {
 export const openDirInExplorer = async(path: string) => {
   await revealInExplorer(path)
 }
+export const writeAppLog = async(entry: {
+  level: string
+  target?: string | null
+  message: string
+  context?: Record<string, unknown> | null
+}) => {
+  await safeInvoke('app_log_write', { entry }, undefined)
+}
+export const writeAppLogBatch = async(entries: Array<{
+  level: string
+  target?: string | null
+  message: string
+  context?: Record<string, unknown> | null
+}>) => {
+  if (!entries.length) return
+  await safeInvoke('app_log_write_batch', { entries }, undefined)
+}
+export const readAppLog = async(offset = 0, limit = 500) => {
+  return await safeInvoke<string[]>('app_log_read', { offset, limit }, [])
+}
+export const clearAppLog = async() => { await safeInvoke('app_log_clear', {}, undefined) }
+export const getAppLogPath = async() => safeInvoke<string>('app_log_path', {}, '')
 export const getCacheSize = async() => 0
 export const clearCache = async() => {}
 

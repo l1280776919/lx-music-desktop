@@ -1,3 +1,4 @@
+mod logger;
 mod player;
 mod store;
 
@@ -16,7 +17,7 @@ use std::{
     path::Path,
     time::Duration,
 };
-use tauri::{AppHandle, Manager, WebviewWindow};
+use tauri::{AppHandle, WebviewWindow};
 
 #[derive(Debug, Serialize, Deserialize)]
 struct FileMetadata {
@@ -329,6 +330,8 @@ fn app_quit(app: AppHandle) {
 
 #[tauri::command]
 fn http_request(payload: HttpRequestPayload) -> Result<HttpResponsePayload, String> {
+    let request_method = payload.method.clone();
+    let request_url = payload.url.clone();
     let mut builder = Client::builder()
         .timeout(Duration::from_millis(payload.timeout.unwrap_or(15_000)))
         .http1_only()
@@ -337,17 +340,29 @@ fn http_request(payload: HttpRequestPayload) -> Result<HttpResponsePayload, Stri
     if let Some(proxy) = build_proxy(payload.proxy)? {
         builder = builder.proxy(proxy);
     }
-    let client = builder.build().map_err(|err| err.to_string())?;
-    let headers = build_header_map(payload.headers)?;
+    let client = builder.build().map_err(|err| {
+        tracing::error!(target: "backend.http", method = %request_method, url = %request_url, error = %err, "http client build failed");
+        err.to_string()
+    })?;
+    let headers = build_header_map(payload.headers).map_err(|err| {
+        tracing::error!(target: "backend.http", method = %request_method, url = %request_url, error = %err, "http headers build failed");
+        err
+    })?;
     let method = payload
         .method
         .parse::<reqwest::Method>()
-        .map_err(|err| err.to_string())?;
+        .map_err(|err| {
+            tracing::error!(target: "backend.http", method = %request_method, url = %request_url, error = %err, "http method parse failed");
+            err.to_string()
+        })?;
     let mut request = client.request(method, payload.url).headers(headers);
     if let Some(body) = payload.body {
         request = request.body(body);
     }
-    let response = request.send().map_err(|err| err.to_string())?;
+    let response = request.send().map_err(|err| {
+        tracing::error!(target: "backend.http", method = %request_method, url = %request_url, error = %err, "http request failed");
+        err.to_string()
+    })?;
     let status_code = response.status().as_u16();
     let status_message = response.status().canonical_reason().unwrap_or("").to_string();
     let final_url = response.url().to_string();
@@ -362,7 +377,10 @@ fn http_request(payload: HttpRequestPayload) -> Result<HttpResponsePayload, Stri
                 .map(|value| (key.as_str().to_string(), value.to_string()))
         })
         .collect();
-    let raw = response.bytes().map_err(|err| err.to_string())?.to_vec();
+    let raw = response.bytes().map_err(|err| {
+        tracing::error!(target: "backend.http", method = %request_method, url = %request_url, status_code, error = %err, "http response bytes read failed");
+        err.to_string()
+    })?.to_vec();
     let bytes = raw.len();
     let body = String::from_utf8_lossy(&raw).to_string();
     Ok(HttpResponsePayload {
@@ -404,10 +422,16 @@ fn rsa_public_encrypt(payload: RsaEncryptPayload) -> Result<Vec<u8>, String> {
 pub fn run() {
     tauri::Builder::default()
         .plugin(tauri_plugin_opener::init())
+        .setup(|app| Ok(logger::init(app.handle())?))
         .manage(player::PlayerBackendState::new())
         .invoke_handler(tauri::generate_handler![
             store_get,
             store_set,
+            logger::app_log_write,
+            logger::app_log_write_batch,
+            logger::app_log_read,
+            logger::app_log_clear,
+            logger::app_log_path,
             fs_exists,
             fs_create_dir,
             fs_create_dir_if_missing,
@@ -446,6 +470,7 @@ pub fn run() {
             player::player_collect,
             player::player_uncollect,
             player::player_dislike,
+            player::player_resolve_toggle,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

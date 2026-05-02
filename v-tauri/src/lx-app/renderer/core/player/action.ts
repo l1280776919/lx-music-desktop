@@ -18,9 +18,13 @@ import { filterList } from './utils'
 import { requestMsg } from '@renderer/utils/message'
 import { getRandom } from '@renderer/utils/index'
 import { dispatchPlayerAction } from '@renderer/utils/ipc'
-import { addListMusics, removeListMusics } from '@renderer/store/list/action'
+import { addListMusics, getListMusics, removeListMusics } from '@renderer/store/list/action'
 import { loveList } from '@renderer/store/list/state'
 import { addDislikeInfo } from '@renderer/core/dislikeList'
+import { dislikeInfo } from '@renderer/store/dislikeList/state'
+import { LIST_IDS } from '@common/constants'
+import { toRaw } from '@common/utils/vueTools'
+import { resolvePlayerToggle } from '../../../../tauri/ipc'
 // import { checkMusicFileAvailable } from '@renderer/utils/music'
 
 let gettingUrlId = ''
@@ -276,6 +280,11 @@ const randomNextMusicInfo = {
   info: null as LX.Player.PlayMusicInfo | null,
   // index: -1,
 }
+const getLoadedList = async(listId: string | null): Promise<Array<LX.Music.MusicInfo | LX.Download.ListItem>> => {
+  const list = getList(listId)
+  if (list.length || !listId || listId == LIST_IDS.DOWNLOAD) return list
+  return await getListMusics(listId)
+}
 export const resetRandomNextMusicInfo = () => {
   if (randomNextMusicInfo.info) {
     randomNextMusicInfo.info = null
@@ -296,7 +305,7 @@ export const getNextPlayMusicInfo = async(): Promise<LX.Player.PlayMusicInfo | n
   // console.log(playInfo.playerListId)
   const currentListId = playInfo.playerListId
   if (!currentListId) return null
-  const currentList = getList(currentListId)
+  const currentList = await getLoadedList(currentListId)
 
   if (playedList.length) { // 移除已播放列表内不存在原列表的歌曲
     let currentId: string
@@ -370,6 +379,49 @@ const handlePlayNext = (playMusicInfo: LX.Player.PlayMusicInfo) => {
   setPlayMusicInfo(playMusicInfo.listId, playMusicInfo.musicInfo, playMusicInfo.isTempPlay)
   handlePlay()
 }
+const syncPlayedList = (list: LX.Player.PlayMusicInfo[]) => {
+  playedList.splice(0, playedList.length, ...list)
+}
+const resolveToggleFromBackend = async(isNext: boolean, isAutoToggle: boolean) => {
+  const currentListId = playInfo.playerListId
+  const currentList = currentListId ? await getLoadedList(currentListId) : []
+  const playerMusicInfo = currentList[playInfo.playerPlayIndex] ?? playMusicInfo.musicInfo
+
+  const result = await resolvePlayerToggle({
+    isNext,
+    isAutoToggle,
+    togglePlayMethod: appSetting['player.togglePlayMethod'],
+    currentListId,
+    currentList: currentList.map(item => toRaw(item)),
+    playedList: playedList.map(item => ({
+      musicInfo: toRaw(item.musicInfo),
+      listId: item.listId,
+      isTempPlay: item.isTempPlay,
+    })),
+    tempPlayList: tempPlayList.map(item => ({
+      musicInfo: toRaw(item.musicInfo),
+      listId: item.listId,
+      isTempPlay: item.isTempPlay,
+    })),
+    currentMusicInfo: playMusicInfo.musicInfo ? toRaw(playMusicInfo.musicInfo) : null,
+    playerMusicInfo: playerMusicInfo ? toRaw(playerMusicInfo) : null,
+    randomNextInfo: randomNextMusicInfo.info
+      ? {
+          musicInfo: toRaw(randomNextMusicInfo.info.musicInfo),
+          listId: randomNextMusicInfo.info.listId,
+          isTempPlay: randomNextMusicInfo.info.isTempPlay,
+        }
+      : null,
+    dislikeInfo: {
+      names: [...dislikeInfo.names],
+      musicNames: [...dislikeInfo.musicNames],
+      singerNames: [...dislikeInfo.singerNames],
+    },
+  })
+  if (!result) return null
+  if (Array.isArray(result.cleanedPlayedList)) syncPlayedList(result.cleanedPlayedList as LX.Player.PlayMusicInfo[])
+  return result
+}
 /**
  * 下一曲
  * @param isAutoToggle 是否自动切换
@@ -377,6 +429,22 @@ const handlePlayNext = (playMusicInfo: LX.Player.PlayMusicInfo) => {
  */
 export const playNextLocal = async(isAutoToggle = false): Promise<void> => {
   console.log('skip next', isAutoToggle)
+  const backendResult = await resolveToggleFromBackend(true, isAutoToggle)
+  if (backendResult) {
+    if (backendResult.consumeTempPlay && tempPlayList.length) removeTempPlayList(0)
+    if (backendResult.selected?.musicInfo) {
+      handlePlayNext(backendResult.selected as LX.Player.PlayMusicInfo)
+      return
+    }
+    if (backendResult.shouldStop) {
+      handleToggleStop()
+      console.log('backend toggle stop')
+      return
+    }
+    console.log('backend next empty')
+    return
+  }
+
   if (tempPlayList.length) { // 如果稍后播放列表存在歌曲则直接播放改列表的歌曲
     const playMusicInfo = tempPlayList[0]
     removeTempPlayList(0)
@@ -398,7 +466,7 @@ export const playNextLocal = async(isAutoToggle = false): Promise<void> => {
     console.log('currentListId empty')
     return
   }
-  const currentList = getList(currentListId)
+  const currentList = await getLoadedList(currentListId)
 
   if (playedList.length) { // 移除已播放列表内不存在原列表的歌曲
     let currentId: string
@@ -409,10 +477,12 @@ export const playNextLocal = async(isAutoToggle = false): Promise<void> => {
       currentId = playMusicInfo.musicInfo.id
     }
     // 从已播放列表移除播放列表已删除的歌曲
-    let index
-    for (index = playedList.findIndex(m => m.musicInfo.id === currentId) + 1; index < playedList.length; index++) {
+    const playedIndex = playedList.findIndex(m => m.musicInfo.id === currentId)
+    let index = -1
+    for (index = playedIndex + 1; playedIndex > -1 && index < playedList.length; index++) {
       const playMusicInfo = playedList[index]
-      const currentId = playMusicInfo.musicInfo.id
+      const currentId = playMusicInfo?.musicInfo?.id
+      if (!currentId) continue
       if (playMusicInfo.listId == currentListId && !currentList.some(m => m.id === currentId)) {
         removePlayedList(index)
         continue
@@ -420,13 +490,13 @@ export const playNextLocal = async(isAutoToggle = false): Promise<void> => {
       break
     }
 
-    if (index < playedList.length) {
+    if (playedIndex > -1 && index > -1 && index < playedList.length && playedList[index]?.musicInfo) {
       handlePlayNext(playedList[index])
       console.log('play played list')
       return
     }
   }
-  if (randomNextMusicInfo.info) {
+  if (randomNextMusicInfo.info?.musicInfo) {
     handlePlayNext(randomNextMusicInfo.info)
     return
   }
@@ -435,7 +505,7 @@ export const playNextLocal = async(isAutoToggle = false): Promise<void> => {
     listId: currentListId,
     list: currentList,
     playedList,
-    playerMusicInfo: currentList[playInfo.playerPlayIndex],
+    playerMusicInfo: currentList[playInfo.playerPlayIndex] ?? playMusicInfo.musicInfo,
     isNext: true,
   })
 
@@ -478,9 +548,14 @@ export const playNextLocal = async(isAutoToggle = false): Promise<void> => {
     console.log('next index empty')
     return
   }
+  const nextMusicInfo = filteredList[nextIndex]
+  if (!nextMusicInfo) {
+    console.warn('next music info empty', { nextIndex, filteredListLength: filteredList.length })
+    return
+  }
 
   handlePlayNext({
-    musicInfo: filteredList[nextIndex],
+    musicInfo: nextMusicInfo,
     listId: currentListId,
     isTempPlay: false,
   })
@@ -490,6 +565,19 @@ export const playNextLocal = async(isAutoToggle = false): Promise<void> => {
  * 上一曲
  */
 export const playPrevLocal = async(isAutoToggle = false): Promise<void> => {
+  const backendResult = await resolveToggleFromBackend(false, isAutoToggle)
+  if (backendResult) {
+    if (backendResult.selected?.musicInfo) {
+      handlePlayNext(backendResult.selected as LX.Player.PlayMusicInfo)
+      return
+    }
+    if (backendResult.shouldStop) {
+      handleToggleStop()
+      return
+    }
+    return
+  }
+
   if (playMusicInfo.musicInfo == null) {
     handleToggleStop()
     return
@@ -500,7 +588,7 @@ export const playPrevLocal = async(isAutoToggle = false): Promise<void> => {
     handleToggleStop()
     return
   }
-  const currentList = getList(currentListId)
+  const currentList = await getLoadedList(currentListId)
 
   if (playedList.length) {
     let currentId: string
@@ -511,10 +599,12 @@ export const playPrevLocal = async(isAutoToggle = false): Promise<void> => {
       currentId = playMusicInfo.musicInfo.id
     }
     // 从已播放列表移除播放列表已删除的歌曲
-    let index
-    for (index = playedList.findIndex(m => m.musicInfo.id === currentId) - 1; index > -1; index--) {
+    const playedIndex = playedList.findIndex(m => m.musicInfo.id === currentId)
+    let index = -1
+    for (index = playedIndex - 1; playedIndex > -1 && index > -1; index--) {
       const playMusicInfo = playedList[index]
-      const currentId = playMusicInfo.musicInfo.id
+      const currentId = playMusicInfo?.musicInfo?.id
+      if (!currentId) continue
       if (playMusicInfo.listId == currentListId && !currentList.some(m => m.id === currentId)) {
         removePlayedList(index)
         continue
@@ -522,7 +612,7 @@ export const playPrevLocal = async(isAutoToggle = false): Promise<void> => {
       break
     }
 
-    if (index > -1) {
+    if (playedIndex > -1 && index > -1 && playedList[index]?.musicInfo) {
       handlePlayNext(playedList[index])
       return
     }
@@ -533,7 +623,7 @@ export const playPrevLocal = async(isAutoToggle = false): Promise<void> => {
     listId: currentListId,
     list: currentList,
     playedList,
-    playerMusicInfo: currentList[playInfo.playerPlayIndex],
+    playerMusicInfo: currentList[playInfo.playerPlayIndex] ?? playMusicInfo.musicInfo,
     isNext: false,
   })
   if (!filteredList.length) {
@@ -570,9 +660,14 @@ export const playPrevLocal = async(isAutoToggle = false): Promise<void> => {
     }
     if (nextIndex < 0) return
   }
+  const nextMusicInfo = filteredList[nextIndex]
+  if (!nextMusicInfo) {
+    console.warn('prev music info empty', { nextIndex, filteredListLength: filteredList.length })
+    return
+  }
 
   handlePlayNext({
-    musicInfo: filteredList[nextIndex],
+    musicInfo: nextMusicInfo,
     listId: currentListId,
     isTempPlay: false,
   })
@@ -650,8 +745,8 @@ export const play = async() => { dispatchPlayerAction('play') }
 export const pause = async() => { dispatchPlayerAction('pause') }
 export const stop = async() => { dispatchPlayerAction('stop') }
 export const togglePlay = async() => { dispatchPlayerAction('togglePlay') }
-export const playNext = async() => { dispatchPlayerAction('next') }
-export const playPrev = async() => { dispatchPlayerAction('prev') }
+export const playNext = async(isAutoToggle = false) => { dispatchPlayerAction('next', isAutoToggle ? { isAutoToggle } : undefined) }
+export const playPrev = async(isAutoToggle = false) => { dispatchPlayerAction('prev', isAutoToggle ? { isAutoToggle } : undefined) }
 export const collectMusic = async() => { dispatchPlayerAction('collect') }
 export const uncollectMusic = async() => { dispatchPlayerAction('unCollect') }
 export const dislikeMusic = async() => { dispatchPlayerAction('dislike') }

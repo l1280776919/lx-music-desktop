@@ -98,6 +98,17 @@ export default () => {
     immediate: true,
   })
 
+  watch([
+    themeId,
+    () => appSetting['theme.lightId'],
+    () => appSetting['theme.darkId'],
+    () => appSetting['common.apiSource'],
+  ], ([id, lightId, darkId, apiSource]) => {
+    getThemes(({ dataPath }) => {
+      applyTheme(id, lightId, darkId, dataPath)
+    })
+  }, { immediate: true })
+
   const rSetConfig = onSettingChanged(({ params: setting }) => {
     // console.log(config)
     mergeSetting(setting)

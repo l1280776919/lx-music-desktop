@@ -13,6 +13,7 @@ import {
   handleGetOnlinePicUrl,
   getCachedLyricInfo,
 } from './utils'
+import { logMusicDiagnostic } from './diagnosticLog'
 
 /* export const setMusicUrl = ({ musicInfo, type, url }: {
   musicInfo: LX.Music.MusicInfo
@@ -59,6 +60,16 @@ export const getMusicUrl = async({ musicInfo, quality, isRefresh, allowToggleSou
     if (targetMusicInfo.id != musicInfo.id && !isFromCache) void saveMusicUrl(targetMusicInfo, targetQuality, url)
     void saveMusicUrl(musicInfo, targetQuality, url)
     return url
+  }).catch(err => {
+    logMusicDiagnostic('music_url_request_terminal_failed', {
+      stage: 'final',
+      musicInfo,
+      quality: targetQuality,
+      isRefresh,
+      allowToggleSource,
+      error: err,
+    })
+    throw err
   })
 }
 
@@ -99,5 +110,14 @@ export const getLyricInfo = async({ musicInfo, isRefresh, allowToggleSource = tr
     else void saveLyric(targetMusicInfo, lyricInfo)
 
     return buildLyricInfo(lyricInfo)
+  }).catch(err => {
+    logMusicDiagnostic('lyric_request_terminal_failed', {
+      stage: 'final',
+      musicInfo,
+      isRefresh,
+      allowToggleSource,
+      error: err,
+    })
+    throw err
   })
 }

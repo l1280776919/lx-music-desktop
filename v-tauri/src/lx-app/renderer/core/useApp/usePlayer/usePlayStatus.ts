@@ -25,6 +25,10 @@ export default () => {
   // const setVisibleDesktopLyric = useCommit('setVisibleDesktopLyric')
   // const setLockDesktopLyric = useCommit('setLockDesktopLyric')
   let collect = false
+  const getAutoToggle = (data?: unknown): boolean => {
+    if (!data || typeof data != 'object') return false
+    return Boolean((data as { isAutoToggle?: boolean }).isAutoToggle)
+  }
 
   const updateCollectStatus = async() => {
     let status = !!playMusicInfo.musicInfo && await checkListExistMusic(loveList.id, playMusicInfo.musicInfo.id)
@@ -109,10 +113,10 @@ export default () => {
         togglePlayLocal()
         break
       case 'prev':
-        void playPrevLocal()
+        void playPrevLocal(getAutoToggle(data))
         break
       case 'next':
-        void playNextLocal()
+        void playNextLocal(getAutoToggle(data))
         break
       case 'collect':
         collectMusicLocal()

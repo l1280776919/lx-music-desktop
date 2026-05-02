@@ -11,6 +11,7 @@ import { appSetting } from '@renderer/store/setting'
 import { langS2T, toNewMusicInfo, toOldMusicInfo } from '@renderer/utils'
 import { requestMsg } from '@renderer/utils/message'
 import { apis } from '@renderer/utils/musicSdk/api-source'
+import { hasLyricContent, logMusicDiagnostic } from './diagnosticLog'
 
 
 const getOtherSourcePromises = new Map()
@@ -125,6 +126,7 @@ export const buildLyricInfo = async(lyricInfo: MakeOptional<LX.Player.LyricInfo,
 export const getCachedLyricInfo = async(musicInfo: LX.Music.MusicInfo): Promise<LX.Player.LyricInfo | null> => {
   let lrcInfo = await getStoreLyric(musicInfo)
   // lrcInfo = {} as unknown as LX.Player.LyricInfo
+  if (!hasLyricContent(lrcInfo)) return null
   if (existTimeExp.test(lrcInfo.lyric)) {
     if (lrcInfo.tlyric != null) {
       // if (musicInfo.lrc.startsWith('\ufeff[id:$00000000]')) {
@@ -153,7 +155,7 @@ export const getCachedLyricInfo = async(musicInfo: LX.Music.MusicInfo): Promise<
     }
     if (musicInfo.source == 'local') return lrcInfo
   }
-  return null
+  return lrcInfo
 }
 
 export const getOnlineOtherSourceMusicUrlByLocal = async(musicInfo: LX.Music.MusicInfoLocal, isRefresh: boolean): Promise<{
@@ -279,6 +281,14 @@ export const getOnlineOtherSourceMusicUrl = async({ musicInfos, quality, onToggl
     return { musicInfo, url, quality: type, isFromCache: false }
     // eslint-disable-next-line @typescript-eslint/promise-function-async
   }).catch((err: any) => {
+    logMusicDiagnostic('music_url_toggle_failed', {
+      stage: 'fallback_source',
+      musicInfo,
+      quality: itemQuality!,
+      isRefresh,
+      retryedSource,
+      error: err,
+    })
     if (err.message == requestMsg.tooManyRequests) throw err
     console.log(err)
     return getOnlineOtherSourceMusicUrl({ musicInfos, quality, onToggleSource, isRefresh, retryedSource })
@@ -313,11 +323,27 @@ export const handleGetOnlineMusicUrl = async({ musicInfo, quality, onToggleSourc
   return reqPromise.then(({ url, type }: { url: string, type: LX.Quality }) => {
     return { musicInfo, url, quality: type, isFromCache: false }
   }).catch(async(err: any) => {
+    logMusicDiagnostic('music_url_failed', {
+      stage: 'primary_source',
+      musicInfo,
+      quality: targetQuality,
+      isRefresh,
+      allowToggleSource,
+      error: err,
+    })
     console.log(err)
     if (!allowToggleSource || err.message == requestMsg.tooManyRequests) throw err
     onToggleSource()
     // eslint-disable-next-line @typescript-eslint/promise-function-async
     return getOtherSource(musicInfo).then(otherSource => {
+      logMusicDiagnostic('music_url_other_source_search', {
+        stage: 'search',
+        musicInfo,
+        quality: targetQuality,
+        isRefresh,
+        allowToggleSource,
+        otherSourceCount: otherSource.length,
+      })
       console.log('find otherSource', otherSource)
       if (otherSource.length) {
         return getOnlineOtherSourceMusicUrl({
@@ -454,13 +480,23 @@ export const getOnlineOtherSourceLyricInfo = async({ musicInfos, onToggleSource,
   // retryedSource.includes(musicInfo.source)
   // eslint-disable-next-line @typescript-eslint/promise-function-async
   return reqPromise.then((lyricInfo: LX.Music.LyricInfo) => {
-    return existTimeExp.test(lyricInfo.lyric) ? {
-      lyricInfo,
-      musicInfo,
-      isFromCache: false,
-    } : Promise.reject(new Error('failed'))
+    if (existTimeExp.test(lyricInfo.lyric) || hasLyricContent(lyricInfo)) {
+      return {
+        lyricInfo,
+        musicInfo,
+        isFromCache: false,
+      }
+    }
+    return Promise.reject(new Error('empty lyric'))
     // eslint-disable-next-line @typescript-eslint/promise-function-async
   }).catch((err: any) => {
+    logMusicDiagnostic('lyric_toggle_failed', {
+      stage: 'fallback_source',
+      musicInfo,
+      isRefresh,
+      retryedSource,
+      error: err,
+    })
     console.log(err)
     return getOnlineOtherSourceLyricInfo({ musicInfos, onToggleSource, isRefresh, retryedSource })
   })
@@ -489,18 +525,36 @@ export const handleGetOnlineLyricInfo = async({ musicInfo, onToggleSource, isRef
   }
   // eslint-disable-next-line @typescript-eslint/promise-function-async
   return reqPromise.then((lyricInfo: LX.Music.LyricInfo) => {
-    return existTimeExp.test(lyricInfo.lyric) ? {
+    if (existTimeExp.test(lyricInfo.lyric) || hasLyricContent(lyricInfo)) {
+      return {
+        lyricInfo,
+        musicInfo,
+        isFromCache: false,
+      }
+    }
+    return Promise.reject(new Error('empty lyric'))
+    // eslint-disable-next-line @typescript-eslint/promise-function-async
+  }).catch((err: any) => {
+    logMusicDiagnostic('lyric_failed', {
+      stage: 'primary_source',
       musicInfo,
-      lyricInfo,
-      isFromCache: false,
-    } : Promise.reject(new Error('failed'))
-  }).catch(async(err: any) => {
+      isRefresh,
+      allowToggleSource,
+      error: err,
+    })
     console.log(err)
     if (!allowToggleSource) throw err
 
     onToggleSource()
     // eslint-disable-next-line @typescript-eslint/promise-function-async
     return getOtherSource(musicInfo).then(otherSource => {
+      logMusicDiagnostic('lyric_other_source_search', {
+        stage: 'search',
+        musicInfo,
+        isRefresh,
+        allowToggleSource,
+        otherSourceCount: otherSource.length,
+      })
       console.log('find otherSource', otherSource)
       if (otherSource.length) {
         return getOnlineOtherSourceLyricInfo({

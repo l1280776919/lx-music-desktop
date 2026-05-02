@@ -25,7 +25,7 @@
     </div>
     <div ref="dom_content_ref" class="scroll" :class="$style.setting">
       <dl>
-        <component :is="avtiveComponentName" />
+        <component :is="avtiveComponentName" :key="avtiveComponentName" />
         <!-- <SettingBasic />
         <SettingPlay />
         <SettingPlayDetail />

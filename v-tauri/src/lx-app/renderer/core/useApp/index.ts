@@ -1,4 +1,4 @@
-import { checkUpdate, getEnvParams, getViewPrevState, sendInited } from '@renderer/utils/ipc'
+import { checkUpdate, getEnvParams, sendInited } from '@renderer/utils/ipc'
 
 import { proxy, isFullscreen, themeId } from '@renderer/store'
 import { appSetting } from '@renderer/store/setting'
@@ -13,7 +13,6 @@ import useEventListener from './useEventListener'
 import useDeeplink from './useDeeplink'
 import usePlayer from './usePlayer'
 import useSettingSync from './useSettingSync'
-import { useRouter } from '@common/utils/vueRouter'
 import handleListAutoUpdate from './listAutoUpdate'
 
 
@@ -25,7 +24,6 @@ export default () => {
   isFullscreen.value = appSetting['common.startInFullscreen']
   themeId.value = appSetting['theme.id']
 
-  const router = useRouter()
   const initSyncService = useSync()
   const initOpenAPI = useOpenAPI()
   const initStatusbarLyric = useStatusbarLyric()
@@ -55,10 +53,6 @@ export default () => {
         port,
       }
     }
-
-    void getViewPrevState().then(state => {
-      void router.push({ path: state.url, query: state.query })
-    })
 
     // 初始化我的列表、下载列表等数据
     void initData().then(() => {

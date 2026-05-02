@@ -360,30 +360,91 @@ fn save_store_value(
     kind: &StoreKind,
     value: &Value,
 ) -> Result<(), String> {
-    clear_store_value(conn, name, kind)?;
     match kind {
         StoreKind::AppSettings => {
-            save_json_object_table(conn, APP_SETTINGS_TABLE, "entry_key", value)?
+            save_json_object_table_upsert(conn, APP_SETTINGS_TABLE, "entry_key", value)?
         }
-        StoreKind::AppData => save_json_object_table(conn, APP_DATA_TABLE, "entry_key", value)?,
-        StoreKind::Sync => save_json_object_table(conn, SYNC_TABLE, "entry_key", value)?,
-        StoreKind::Hotkey => save_json_object_table(conn, HOTKEY_TABLE, "entry_key", value)?,
-        StoreKind::UserApi => save_ordered_array_table(conn, USER_API_TABLE, "entry_id", value)?,
-        StoreKind::Theme => save_ordered_array_table(conn, THEME_TABLE, "entry_id", value)?,
-        StoreKind::SoundEffect => save_sound_effect_table(conn, value)?,
-        StoreKind::LyricRaw => save_json_object_table(conn, LYRIC_RAW_TABLE, "music_id", value)?,
-        StoreKind::LyricEdited => {
-            save_json_object_table(conn, LYRIC_EDITED_TABLE, "music_id", value)?
+        _ => {
+            clear_store_value(conn, name, kind)?;
+            match kind {
+                StoreKind::AppData => {
+                    save_json_object_table(conn, APP_DATA_TABLE, "entry_key", value)?
+                }
+                StoreKind::Sync => save_json_object_table(conn, SYNC_TABLE, "entry_key", value)?,
+                StoreKind::Hotkey => save_json_object_table(conn, HOTKEY_TABLE, "entry_key", value)?,
+                StoreKind::UserApi => {
+                    save_ordered_array_table(conn, USER_API_TABLE, "entry_id", value)?
+                }
+                StoreKind::Theme => save_ordered_array_table(conn, THEME_TABLE, "entry_id", value)?,
+                StoreKind::SoundEffect => save_sound_effect_table(conn, value)?,
+                StoreKind::LyricRaw => {
+                    save_json_object_table(conn, LYRIC_RAW_TABLE, "music_id", value)?
+                }
+                StoreKind::LyricEdited => {
+                    save_json_object_table(conn, LYRIC_EDITED_TABLE, "music_id", value)?
+                }
+                StoreKind::MusicUrl => save_string_map_table(conn, MUSIC_URL_TABLE, value)?,
+                StoreKind::DownloadTask => {
+                    save_ordered_array_table(conn, DOWNLOAD_TASK_TABLE, "task_id", value)?
+                }
+                StoreKind::ListData => save_list_store(conn, value)?,
+                StoreKind::Dislike => save_dislike_store(conn, value)?,
+                StoreKind::Misc => save_misc_store(conn, name, value)?,
+                StoreKind::AppSettings => unreachable!("app settings handled above"),
+            }
         }
-        StoreKind::MusicUrl => save_string_map_table(conn, MUSIC_URL_TABLE, value)?,
-        StoreKind::DownloadTask => {
-            save_ordered_array_table(conn, DOWNLOAD_TASK_TABLE, "task_id", value)?
-        }
-        StoreKind::ListData => save_list_store(conn, value)?,
-        StoreKind::Dislike => save_dislike_store(conn, value)?,
-        StoreKind::Misc => save_misc_store(conn, name, value)?,
     }
     mark_store_registered(conn, name)
+}
+
+fn save_json_object_table_upsert(
+    conn: &Connection,
+    table_name: &str,
+    key_column: &str,
+    value: &Value,
+) -> Result<(), String> {
+    let Some(object) = value.as_object() else {
+        return Err(format!("{table_name} expects object value"));
+    };
+
+    let incoming_keys: HashSet<&str> = object.keys().map(|key| key.as_str()).collect();
+    let mut stmt = conn
+        .prepare(&format!("SELECT {key_column} FROM {table_name}"))
+        .map_err(|err| err.to_string())?;
+    let rows = stmt
+        .query_map([], |row| row.get::<_, String>(0))
+        .map_err(|err| err.to_string())?;
+    let mut obsolete_keys = Vec::new();
+    for row in rows {
+        let key = row.map_err(|err| err.to_string())?;
+        if !incoming_keys.contains(key.as_str()) {
+            obsolete_keys.push(key);
+        }
+    }
+    drop(stmt);
+
+    for key in obsolete_keys {
+        conn.execute(
+            &format!("DELETE FROM {table_name} WHERE {key_column} = ?1"),
+            params![key],
+        )
+        .map_err(|err| err.to_string())?;
+    }
+
+    for (key, item) in object {
+        conn.execute(
+            &format!(
+                "
+                INSERT INTO {table_name}({key_column}, value_json)
+                VALUES(?1, ?2)
+                ON CONFLICT({key_column}) DO UPDATE SET value_json = excluded.value_json
+                "
+            ),
+            params![key, serde_json::to_string(item).map_err(|err| err.to_string())?],
+        )
+        .map_err(|err| err.to_string())?;
+    }
+    Ok(())
 }
 
 fn clear_store_value(conn: &Connection, name: &str, kind: &StoreKind) -> Result<(), String> {

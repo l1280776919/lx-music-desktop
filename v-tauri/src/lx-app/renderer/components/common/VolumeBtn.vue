@@ -1,9 +1,7 @@
 <template>
   <material-popup-btn :class="$style.btnContent">
     <button :class="$style.btn" :aria-label="isMute ? $t('player__volume_muted') : `${$t('player__volume')}${parseInt(volume * 100)}%`" @wheel="handleWheel">
-      <svg version="1.1" xmlns="http://www.w3.org/2000/svg" xlink="http://www.w3.org/1999/xlink" width="100%" viewBox="0 0 24 24" space="preserve">
-        <use :xlink:href="icon" />
-      </svg>
+      <span :class="$style.icon" v-html="iconSvg" />
     </button>
     <template #content>
       <div :class="$style.setting">
@@ -29,6 +27,11 @@ import { computed } from '@common/utils/vueTools'
 // import { musicInfo, playMusicInfo } from '@renderer/store/player/state'
 import { saveVolumeIsMute } from '@renderer/store/setting'
 import { volume, isMute } from '@renderer/store/player/volume'
+import volumeMuteOutlineSvg from '@renderer/assets/svgs/volume-mute-outline.svg?raw'
+import volumeOffOutlineSvg from '@renderer/assets/svgs/volume-off-outline.svg?raw'
+import volumeLowOutlineSvg from '@renderer/assets/svgs/volume-low-outline.svg?raw'
+import volumeMediumOutlineSvg from '@renderer/assets/svgs/volume-medium-outline.svg?raw'
+import volumeHighOutlineSvg from '@renderer/assets/svgs/volume-high-outline.svg?raw'
 
 const handleWheel = (event) => {
   window.app_event.setVolume(Math.round(volume.value * 100 + (-event.deltaY / 100 * 2)) / 100)
@@ -38,16 +41,16 @@ const handleUpdateVolume = (val) => {
   window.app_event.setVolume(val)
 }
 
-const icon = computed(() => {
+const iconSvg = computed(() => {
   return isMute.value
-    ? '#icon-volume-mute-outline'
+    ? volumeMuteOutlineSvg
     : volume.value == 0
-      ? '#icon-volume-off-outline'
+      ? volumeOffOutlineSvg
       : volume.value < 0.3
-        ? '#icon-volume-low-outline'
+        ? volumeLowOutlineSvg
         : volume.value < 0.7
-          ? '#icon-volume-medium-outline'
-          : '#icon-volume-high-outline'
+          ? volumeMediumOutlineSvg
+          : volumeHighOutlineSvg
 })
 
 </script>
@@ -77,22 +80,29 @@ const icon = computed(() => {
   border-radius: 50%;
   transition: background-color 0.2s ease, opacity 0.2s ease, transform 0.1s ease;
 
-  svg {
-    transition: opacity @transition-fast;
-    opacity: .6;
-    filter: drop-shadow(0 0 1px rgba(0, 0, 0, 0.2));
+  .icon {
+    display: flex;
     width: 90%;
     height: 90%;
   }
+
+  :global(.icon svg),
+  .icon :global(svg) {
+    transition: opacity @transition-fast;
+    opacity: .6;
+    filter: drop-shadow(0 0 1px rgba(0, 0, 0, 0.2));
+    width: 100%;
+    height: 100%;
+  }
   &:hover {
     background-color: rgba(0, 0, 0, 0.05);
-    svg {
+    .icon :global(svg) {
       opacity: 1;
     }
   }
   &:active {
     transform: scale(0.92);
-    svg {
+    .icon :global(svg) {
       opacity: 1;
     }
   }

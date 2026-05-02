@@ -45,8 +45,10 @@ export default {
   setup() {
     let lastClickTime = 0
     let clickNum = 0
-    const commit_id = COMMIT_ID
-    const commit_date = dateFormat(COMMIT_DATE)
+    const commit_id = typeof COMMIT_ID == 'string' ? COMMIT_ID : ''
+    const commit_date = typeof COMMIT_DATE == 'string' && COMMIT_DATE
+      ? dateFormat(COMMIT_DATE)
+      : ''
 
     const t = useI18n()
 
