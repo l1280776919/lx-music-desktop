@@ -1,5 +1,5 @@
 <template lang="pug">
-material-modal(:show="modelValue" teleport="#view" height="80%" width="80%" @close="$emit('update:modelValue', false)")
+material-modal(:show="modelValue" teleport="#overlay-root" height="80%" width="80%" @close="$emit('update:modelValue', false)")
   main(:class="$style.main")
     h2 {{ $t('setting__dislike_list_title') }}
     div(:class="$style.content")
@@ -112,3 +112,4 @@ export default {
 }
 
 </style>
+

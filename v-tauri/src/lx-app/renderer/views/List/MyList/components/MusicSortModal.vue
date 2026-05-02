@@ -1,5 +1,5 @@
 <template>
-  <material-modal :show="show" teleport="#view" @close="handleClose" @after-enter="$refs.input.focus()">
+  <material-modal :show="show" teleport="#overlay-root" @close="handleClose" @after-enter="$refs.input.focus()">
     <main :class="$style.main">
       <h2>{{ selectedNum > 0 ? $t('music_sort__title_multiple', { num: selectedNum }) : $t('music_sort__title', { name: musicInfo ? musicInfo.name : '' }) }}</h2>
       <base-input
@@ -115,3 +115,4 @@ export default {
 }
 
 </style>
+

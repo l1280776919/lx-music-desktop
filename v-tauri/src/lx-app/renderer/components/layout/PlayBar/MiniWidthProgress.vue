@@ -16,22 +16,14 @@
     <div :class="$style.centerContent">
       <div :class="$style.playBtnContent">
         <div :class="$style.playBtn" :aria-label="$t('player__prev')" @click="playPrev()">
-          <svg version="1.1" xmlns="http://www.w3.org/2000/svg" xlink="http://www.w3.org/1999/xlink" height="100%" viewBox="0 0 1024 1024" space="preserve">
-            <use xlink:href="#icon-prevMusic" />
-          </svg>
+          <SkipBack :size="24" stroke-width="2.5" />
         </div>
         <div :class="[$style.playBtn, $style.playPauseBtn]" :aria-label="isPlay ? $t('player__pause') : $t('player__play')" @click="togglePlay">
-          <svg v-if="isPlay" version="1.1" xmlns="http://www.w3.org/2000/svg" xlink="http://www.w3.org/1999/xlink" height="100%" viewBox="0 0 1024 1024" space="preserve" style="margin-left: 0;">
-            <use xlink:href="#icon-pause" />
-          </svg>
-          <svg v-else version="1.1" xmlns="http://www.w3.org/2000/svg" xlink="http://www.w3.org/1999/xlink" height="100%" viewBox="0 0 1024 1024" space="preserve">
-            <use xlink:href="#icon-play" />
-          </svg>
+          <Pause v-if="isPlay" :size="24" stroke-width="2.5" />
+          <Play v-else :size="24" stroke-width="2.5" style="margin-left: 2px;" />
         </div>
         <div :class="$style.playBtn" :aria-label="$t('player__next')" @click="playNext()">
-          <svg version="1.1" xmlns="http://www.w3.org/2000/svg" xlink="http://www.w3.org/1999/xlink" height="100%" viewBox="0 0 1024 1024" space="preserve">
-            <use xlink:href="#icon-nextMusic" />
-          </svg>
+          <SkipForward :size="24" stroke-width="2.5" />
         </div>
       </div>
       
@@ -54,6 +46,7 @@
 import { computed } from '@common/utils/vueTools'
 import { useRouter } from '@common/utils/vueRouter'
 import { clipboardWriteText } from '@common/utils/electron'
+import { Play, Pause, SkipBack, SkipForward } from 'lucide-vue-next'
 import ControlBtns from './ControlBtns.vue'
 import PlayProgress from './PlayProgress.vue'
 import usePlayProgress from '@renderer/utils/compositions/usePlayProgress'
@@ -79,6 +72,10 @@ export default {
   components: {
     ControlBtns,
     PlayProgress,
+    Play,
+    Pause,
+    SkipBack,
+    SkipForward,
   },
   setup() {
     const router = useRouter()
@@ -165,20 +162,9 @@ export default {
   contain: strict;
   padding: 0 20px;
   z-index: 2;
-  
+
   &:before {
-    .mixin-after();
-    left: 0;
-    top: 0;
-    width: 100%;
-    height: 100%;
-    background-color: rgba(255, 255, 255, 0.85);
-    opacity: 1;
-    z-index: -1;
-    backdrop-filter: blur(40px) saturate(220%);
-    -webkit-backdrop-filter: blur(40px) saturate(220%);
-    border-top: 1px solid rgba(255, 255, 255, 0.6);
-    box-shadow: 0 -2px 10px rgba(0, 0, 0, 0.02);
+    display: none;
   }
 }
 
@@ -241,11 +227,6 @@ export default {
     height: 4px;
     border-radius: @radius-progress-border;
     transition: height 0.2s ease, box-shadow 0.2s ease;
-  }
-  
-  &:hover .progressBar {
-    height: 6px;
-    box-shadow: 0 2px 8px var(--color-primary-alpha-400);
   }
 }
 
@@ -352,14 +333,15 @@ export default {
   cursor: pointer;
 
   svg {
-    height: 50%;
-    fill: currentColor;
+    height: 40%;
     filter: drop-shadow(0 0 1px rgba(0, 0, 0, 0.1));
+    fill: none;
+    stroke: currentColor;
   }
   &:hover {
     opacity: 1;
     color: var(--color-primary);
-    background-color: rgba(0, 0, 0, 0.05);
+    background-color: var(--color-primary-alpha-200);
   }
   &:active {
     opacity: 0.8;
@@ -375,7 +357,7 @@ export default {
   opacity: 1;
 
   svg {
-    height: 45%;
+    height: 40%;
     filter: none;
     margin-left: 2px; // slightly offset play icon visually
   }

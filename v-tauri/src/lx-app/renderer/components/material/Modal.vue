@@ -43,7 +43,7 @@ export default {
     },
     teleport: {
       type: String,
-      default: '#root',
+      default: '#overlay-root',
     },
     maxWidth: {
       type: String,
@@ -70,11 +70,9 @@ export default {
   data() {
     return {
       animates: [
-        [['jackInTheBox', 'flipInX', 'flipInY', 'lightSpeedIn'], ['flipOutX', 'flipOutY', 'lightSpeedOut']],
-        // [['jackInTheBox', 'lightSpeedIn'], ['lightSpeedOut']],
-        [['rotateInDownLeft', 'rotateInDownRight', 'rotateInUpLeft', 'rotateInUpRight'], ['rotateOutDownLeft', 'rotateOutDownRight', 'rotateOutUpLeft', 'rotateOutUpRight']],
-        [['jackInTheBox', 'zoomInDown', 'zoomInUp'], ['zoomOutDown', 'zoomOutUp']],
-        [['slideInDown', 'slideInLeft', 'slideInRight', 'slideInUp'], ['slideOutDown', 'slideOutLeft', 'slideOutRight', 'slideOutUp']],
+        [['fadeIn', 'fadeInUp'], ['fadeOut', 'fadeOutDown']],
+        [['zoomIn', 'fadeIn'], ['zoomOut', 'fadeOut']],
+        [['slideInUp', 'fadeIn'], ['slideOutDown', 'fadeOut']],
 
         // ['flipInX', 'flipOutX'],
         // ['flipInY', 'flipOutY'],
@@ -139,8 +137,8 @@ export default {
       //   'slideOutUp',
       //   'hinge',
       // ],
-      inClass: 'animated jackInTheBox',
-      outClass: 'animated slideOutRight',
+      inClass: 'animated-fast fadeInUp',
+      outClass: 'animated-fast fadeOutDown',
       showModal: false,
       showContent: false,
       modalCount: false,
@@ -159,7 +157,7 @@ export default {
       }
     },
     filter() {
-      return this.teleport == '#root' || this.modalCount > 1
+      return ['#root', '#overlay-root'].includes(this.teleport) || this.modalCount > 1
     },
   },
   watch: {
@@ -186,8 +184,9 @@ export default {
         this.showModal = true
         void nextTick(() => {
           const node = this.$refs.dom_container.parentNode
-          if (!node.classList.contains('show-modal')) {
-            node.classList.add('show-modal')
+          const effectNode = node.id == 'overlay-root' ? document.getElementById('container') : node
+          if (effectNode && !effectNode.classList.contains('show-modal')) {
+            effectNode.classList.add('show-modal')
             this.isAddedClass = true
           }
           this.showContent = true
@@ -200,7 +199,10 @@ export default {
     },
     removeClass() {
       if (!this.isAddedClass) return
-      this.$refs.dom_container?.parentNode.classList.remove('show-modal')
+      const node = this.$refs.dom_container?.parentNode
+      const effectNode = node?.id == 'overlay-root' ? document.getElementById('container') : node
+      if (modalCount < 1) effectNode?.classList.remove('show-modal')
+      this.isAddedClass = false
     },
     setRandomAnimation() {
       if (appSetting['common.randomAnimate']) {
@@ -210,8 +212,8 @@ export default {
         // console.log(animIn, animOut)
         // this.inClass = 'animated ' + animIn
         // this.outClass = 'animated ' + animOut
-        this.inClass = 'animated ' + animIn[getRandom(0, animIn.length)]
-        this.outClass = 'animated ' + animOut[getRandom(0, animOut.length)]
+        this.inClass = 'animated-fast ' + animIn[getRandom(0, animIn.length)]
+        this.outClass = 'animated-fast ' + animOut[getRandom(0, animOut.length)]
       }
     },
     close() {
@@ -227,6 +229,7 @@ export default {
 
 
 <style lang="less" module>
+
 @import '@renderer/assets/styles/layout.less';
 
 .container {
@@ -252,7 +255,7 @@ export default {
   // will-change: transform;
 
   &.filter {
-    backdrop-filter: grayscale(70%);
+    background-color: rgba(0, 0, 0, 0.16);
   }
 
   // &:before {
@@ -269,8 +272,8 @@ export default {
 
 .content {
   position: relative;
-  border-radius: 4px;
-  box-shadow: 0 0 4px rgba(0, 0, 0, .25);
+  border-radius: @radius-border;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, .15);
   overflow: hidden;
   // max-height: 80%;
   // max-width: 76%;
@@ -279,7 +282,10 @@ export default {
   display: flex;
   flex-flow: column nowrap;
   z-index: 100;
-  background-color: var(--color-content-background);
+  background-color: var(--color-main-background);
+  backdrop-filter: blur(14px) saturate(135%);
+  -webkit-backdrop-filter: blur(14px) saturate(135%);
+  border: 1px solid var(--color-primary-alpha-900);
 }
 
 .header {

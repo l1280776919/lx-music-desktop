@@ -152,13 +152,13 @@ export default {
   overflow: hidden;
   transition: @transition-normal;
   transition-property: background-color, opacity;
-  background-color: var(--color-primary-light-100-alpha-800);
+  background-color: var(--color-primary-light-100-alpha-400);
 
   .progressBar {
     height: 100%;
     width: 100%;
     // position: absolute;
-    background-color: var(--color-primary-light-100-alpha-400);
+    background-color: var(--color-primary-light-100-alpha-800);
     // left: 0;
     // top: 0;
     transform-origin: 0;

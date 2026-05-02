@@ -22,16 +22,15 @@ import NavBar from './NavBar.vue'
 .aside {
   transition: @transition-normal;
   transition-property: background-color;
-  background-color: rgba(255, 255, 255, 0.6);
-  backdrop-filter: blur(40px) saturate(220%);
-  -webkit-backdrop-filter: blur(40px) saturate(220%);
+  /* 网易云风格：侧边栏也有极弱的毛玻璃和半透明背景 */
+  background-color: var(--color-aside-background, rgba(128, 128, 128, 0.08));
   -webkit-app-region: drag;
   -webkit-user-select: none;
   display: flex;
   flex-flow: column nowrap;
-  border-right: 1px solid rgba(255, 255, 255, 0.4);
+  border-right: 1px solid rgba(128, 128, 128, 0.1);
   z-index: 10;
-  box-shadow: 1px 0px 10px rgba(0, 0, 0, 0.02);
+  box-shadow: 2px 0 10px rgba(0, 0, 0, 0.02);
 
   &.fullscreen {
     -webkit-app-region: no-drag;

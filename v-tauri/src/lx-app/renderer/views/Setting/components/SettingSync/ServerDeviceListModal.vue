@@ -1,5 +1,5 @@
 <template lang="pug">
-material-modal(:show="modelValue" bg-close teleport="#view" @close="$emit('update:modelValue', false)")
+material-modal(:show="modelValue" bg-close teleport="#overlay-root" @close="$emit('update:modelValue', false)")
   main(:class="$style.main")
     h2 {{ $t('setting__sync_server_device_list_title') }}
     ul.scroll(v-if="historyDeviceList.length" :class="$style.content")
@@ -161,3 +161,4 @@ export default {
 }
 
 </style>
+

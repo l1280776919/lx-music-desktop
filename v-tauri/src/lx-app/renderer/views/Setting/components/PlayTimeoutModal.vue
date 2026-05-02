@@ -1,5 +1,5 @@
 <template lang="pug">
-material-modal(:show="modelValue" teleport="#view" @close="handleCloseModal" @after-enter="$refs.dom_input.focus()")
+material-modal(:show="modelValue" teleport="#overlay-root" @close="handleCloseModal" @after-enter="$refs.dom_input.focus()")
   main(:class="$style.main")
     h2 {{ $t('play_timeout') }}
     div(:class="$style.content")
@@ -147,3 +147,4 @@ export default {
 }
 
 </style>
+

@@ -26,15 +26,9 @@ const {
   search,
 } = useList()
 
-watch(() => [props.sourceId, props.page], ([sourceId, page]) => {
-  setTimeout(() => {
-    search(searchText.value, sourceId as SearchSource, page as number || 1)
-  })
-})
-watch(searchText, (searchText) => {
-  setTimeout(() => {
-    search(searchText, props.sourceId, props.page)
-  })
+watch(() => [searchText.value, props.sourceId, props.page], ([text, sourceId, page]) => {
+  if (!text) return
+  search(text, sourceId as SearchSource, page as number || 1)
 }, {
   immediate: true,
 })
@@ -56,9 +50,9 @@ const togglePage = (page: number) => {
 
 <style lang="less" module>
 .container {
-  position: absolute;
-  left: 0;
-  top: 0;
+  position: relative;
+  flex: auto;
+  min-height: 0;
   width: 100%;
   height: 100%;
   padding-top: 5px;

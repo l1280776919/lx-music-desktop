@@ -1,8 +1,9 @@
 <template>
   <div :class="$style.view">
     <router-view v-slot="{ Component }">
-      <!-- <transition enter-active-class="animated-fast fadeIn" leave-active-class="animated-fast fadeOut"> -->
-      <component :is="Component" class="view-container" />
+      <!-- 移除会导致初次进入卡顿的过度动画，或者改用轻量的渐变 -->
+      <!-- <transition name="fade" mode="out-in"> -->
+        <component :is="Component" class="view-container" />
       <!-- </transition> -->
     </router-view>
   </div>
@@ -13,11 +14,16 @@
 
 .view {
   position: relative;
+  display: flex;
+  width: 100%;
+  height: 100%;
+  min-height: 0;
+  overflow: hidden;
   z-index: 1;
   > :global(.view-container) {
-    position: absolute !important;
-    left: 0;
-    top: 0;
+    position: relative !important;
+    flex: auto;
+    min-height: 0;
     height: 100%;
     width: 100%;
   }
@@ -25,4 +31,15 @@
   // overflow: hidden;
 }
 
+</style>
+<style>
+.fade-enter-active,
+.fade-leave-active {
+  transition: opacity 0.15s ease;
+}
+
+.fade-enter-from,
+.fade-leave-to {
+  opacity: 0;
+}
 </style>

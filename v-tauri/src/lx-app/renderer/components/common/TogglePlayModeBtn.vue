@@ -126,6 +126,8 @@ const toggleMode = (mode) => {
     filter: drop-shadow(0 0 1px rgba(0, 0, 0, 0.2));
     width: 90%;
     height: 90%;
+    fill: currentColor;
+    // stroke: currentColor;
   }
   &:hover {
     background-color: rgba(0, 0, 0, 0.05);

@@ -255,15 +255,23 @@ export default {
 @lists-item-height: 36px;
 .lists {
   flex: none;
-  width: 16%;
+  width: clamp(200px, 17%, 240px);
   display: flex;
   flex-flow: column nowrap;
+  min-height: 0;
+  border-radius: 22px;
+  background-color: rgba(255, 255, 255, 0.24);
+  border: 1px solid rgba(255, 255, 255, 0.36);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.38);
+  overflow: hidden;
 }
 .listHeader {
   position: relative;
   display: flex;
   flex-flow: row nowrap;
   border-bottom: var(--color-list-header-border-bottom);
+  align-items: center;
+  padding: 10px 12px 8px;
   &:hover {
     .listsAdd {
       opacity: 1;
@@ -273,9 +281,11 @@ export default {
 .listsTitle {
   flex: auto;
   font-size: 12px;
-  line-height: 38px;
-  padding: 0 10px;
+  line-height: 1.2;
+  padding: 0;
   .mixin-ellipsis-1();
+  color: var(--color-font-label);
+  letter-spacing: 0.04em;
 }
 .headerBtns {
   flex: none;
@@ -284,30 +294,34 @@ export default {
 .listsAdd {
   // position: absolute;
   // right: 0;
-  margin-top: 6px;
+  margin-top: 0;
   background: none;
+  width: 30px;
   height: 30px;
   border: none;
   outline: none;
-  border-radius: @radius-border;
+  border-radius: 999px;
   cursor: pointer;
-  opacity: .1;
-  transition: opacity @transition-normal;
+  opacity: .25;
+  transition: opacity @transition-normal, background-color @transition-normal, transform @transition-normal;
   color: var(--color-button-font);
   svg {
     vertical-align: bottom;
   }
   &:active {
-    opacity: .7 !important;
+    opacity: .9 !important;
+    transform: scale(0.94);
   }
   &:hover {
-    opacity: .6 !important;
+    opacity: .9 !important;
+    background-color: rgba(255, 255, 255, 0.6);
   }
 }
 .listsContent {
   flex: auto;
   min-width: 0;
   overflow-y: scroll !important;
+  padding: 8px;
   // border-right: 1px solid rgba(0, 0, 0, 0.12);
 
   &.sortable {
@@ -328,24 +342,27 @@ export default {
 }
 .listsItem {
   position: relative;
-  transition: .3s ease;
-  transition-property: color, background-color, opacity;
+  transition: .22s ease;
+  transition-property: color, background-color, opacity, transform;
   background-color: transparent;
+  border-radius: 14px;
   &:not(.active) {
     &:hover {
-      background-color: var(--color-primary-background-hover);
+      background-color: rgba(255, 255, 255, 0.58);
+      transform: translateX(2px);
       cursor: pointer;
     }
   }
   &.active {
-    // background-color:
+    background-color: rgba(255, 255, 255, 0.72);
     color: var(--color-primary);
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.4);
   }
   &.selected {
-    background-color: var(--color-primary-font-active);
+    background-color: rgba(255, 255, 255, 0.8);
   }
   &.clicked {
-    background-color: var(--color-primary-background-hover);
+    background-color: rgba(255, 255, 255, 0.62);
   }
   &.fetching {
     opacity: .5;
@@ -370,7 +387,7 @@ export default {
 .listsLabel {
   display: block;
   height: @lists-item-height;
-  padding: 0 10px;
+  padding: 0 12px 0 16px;
   font-size: 13px;
   line-height: @lists-item-height;
   .mixin-ellipsis-1();
@@ -392,7 +409,8 @@ export default {
 
 .listsNew {
   padding: 0 10px;
-  background-color: var(--color-primary-background-hover) !important;
+  background-color: rgba(255, 255, 255, 0.62) !important;
+  border-radius: 14px;
   .listsInput {
     display: block;
   }

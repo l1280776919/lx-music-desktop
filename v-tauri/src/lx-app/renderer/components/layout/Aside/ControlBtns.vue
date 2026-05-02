@@ -1,20 +1,20 @@
 <template>
   <div v-show="!isFullscreen" ref="dom_btns" :class="$style.controlBtn">
-    <button type="button" :class="[$style.btn, $style.close]" :aria-label="$t('close')" ignore-tip :title="$t('close')" @click="closeWindow">
-      <svg :class="$style.controlBtniIcon" version="1.1" xmlns="http://www.w3.org/2000/svg" xlink="http://www.w3.org/1999/xlink" width="100%" viewBox="0 0 24 24" space="preserve">
-        <use xlink:href="#icon-window-close" />
-      </svg>
-    </button>
     <button type="button" :class="[$style.btn, $style.min]" :aria-label="$t('min')" ignore-tip :title="$t('min')" @click="minWindow">
-      <svg :class="$style.controlBtniIcon" version="1.1" xmlns="http://www.w3.org/2000/svg" xlink="http://www.w3.org/1999/xlink" width="100%" viewBox="0 0 24 24" space="preserve">
-        <use xlink:href="#icon-window-minimize" />
-      </svg>
+      <Minus :class="$style.controlBtniIcon" :size="10" stroke-width="2.4" />
+    </button>
+    <button type="button" :class="[$style.btn, $style.max]" :aria-label="$t('max')" ignore-tip :title="$t('max')" @click="minMaxWindowToggle">
+      <Square :class="$style.controlBtniIcon" :size="9" stroke-width="2.2" />
+    </button>
+    <button type="button" :class="[$style.btn, $style.close]" :aria-label="$t('close')" ignore-tip :title="$t('close')" @click="closeWindow">
+      <X :class="$style.controlBtniIcon" :size="10" stroke-width="2.4" />
     </button>
   </div>
 </template>
 
 <script setup>
-import { minWindow, closeWindow } from '@renderer/utils/ipc'
+import { Minus, Square, X } from 'lucide-vue-next'
+import { minWindow, closeWindow, minMaxWindowToggle } from '@renderer/utils/ipc'
 import { onMounted, onBeforeUnmount, ref, useCssModule } from '@common/utils/vueTools'
 // import { getRandom } from '../../utils'
 import { isFullscreen } from '@renderer/store'
@@ -55,22 +55,22 @@ onBeforeUnmount(() => {
 @control-btn-height: 6%;
 .controlBtn {
   box-sizing: border-box;
-  padding: 0 7px;
+  padding: 10px 12px 0;
   display: flex;
   align-items: center;
-  justify-content: space-evenly;
+  justify-content: flex-start;
+  gap: 8px;
   width: 100%;
-  height: @control-btn-height;
+  height: auto;
   -webkit-app-region: no-drag;
-  opacity: .5;
+  opacity: .72;
   transition: opacity @transition-normal;
   &.hover {
-    opacity: .8;
+    opacity: .96;
     .controlBtniIcon {
       opacity: 1;
     }
   }
-
 }
 .btn {
   position: relative;
@@ -85,22 +85,31 @@ onBeforeUnmount(() => {
   padding: 1px;
   cursor: pointer;
   border-radius: 50%;
-  color: var(--color-font);
+  color: rgba(0, 0, 0, 0.46);
+  justify-content: center;
+  align-items: center;
+  transition: transform 0.16s ease, opacity 0.2s ease, filter 0.2s ease;
 
   &.min {
     background-color: var(--color-btn-min);
   }
-  // &.max {
-  //   background-color: var(--color-btn-max);
-  // }
+  &.max {
+    background-color: #f2c14e;
+  }
   &.close {
     background-color: var(--color-btn-close);
+  }
+
+  &:active {
+    transform: scale(0.9);
   }
 }
 
 .controlBtniIcon {
   opacity: 0;
   transition: opacity 0.2s ease-in-out;
+  fill: none;
+  stroke: currentColor;
 }
 
 

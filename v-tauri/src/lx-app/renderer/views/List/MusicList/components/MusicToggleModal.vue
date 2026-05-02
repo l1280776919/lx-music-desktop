@@ -1,5 +1,5 @@
 <template>
-  <material-modal :show="show" teleport="#view" bg-close height="100%" @close="handleClose">
+  <material-modal :show="show" teleport="#overlay-root" bg-close height="100%" @close="handleClose">
     <main :class="$style.main">
       <base-tab v-model="source" :class="$style.tab" :list="tabs" />
       <div class="scroll" :class="$style.list">
@@ -367,3 +367,4 @@ export default {
 
 
 </style>
+

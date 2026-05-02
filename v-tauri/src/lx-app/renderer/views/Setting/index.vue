@@ -182,30 +182,56 @@ export default {
   display: flex;
   flex-flow: row nowrap;
   height: 100%;
+  min-height: 0;
+  gap: 18px;
+  padding: 16px 18px 18px;
   border-top: var(--color-list-header-border-bottom);
 }
 
 .toc {
-  flex: 0 0 16%;
-  overflow-y: scroll;
+  flex: 0 0 clamp(180px, 18%, 220px);
+  min-height: 0;
+  overflow-y: auto;
+  padding: 10px;
+  border-radius: 18px;
+  background-color: rgba(255, 255, 255, 0.42);
+  border: 1px solid rgba(255, 255, 255, 0.4);
+  box-shadow: 0 10px 24px rgba(0, 0, 0, 0.04);
 }
 .tocH2 {
   line-height: 1.5;
   .mixin-ellipsis-1();
   font-size: 13px;
   color: var(--color-font);
-  padding: 8px 10px;
+  padding: 9px 12px 9px 18px;
+  border-radius: 12px;
+  position: relative;
   transition: @transition-fast;
-  transition-property: background-color, color;
+  transition-property: background-color, color, transform;
 
   &:not(.active) {
     cursor: pointer;
     &:hover {
-      background-color: var(--color-button-background-hover);
+      background-color: rgba(255, 255, 255, 0.55);
+      transform: translateX(2px);
     }
   }
   &.active {
     color: var(--color-primary);
+    background-color: rgba(255, 255, 255, 0.68);
+
+    &::before {
+      content: '';
+      position: absolute;
+      left: 8px;
+      top: 50%;
+      width: 3px;
+      height: 18px;
+      transform: translateY(-50%);
+      border-radius: 999px;
+      background-color: var(--color-primary);
+      box-shadow: 0 0 10px var(--color-primary-alpha-300);
+    }
   }
 }
 .activeIcon {
@@ -234,8 +260,13 @@ export default {
   box-sizing: border-box;
   overflow-y: auto;
   height: 100%;
+  min-height: 0;
   position: relative;
   width: 100%;
+  border-radius: 22px;
+  background-color: rgba(255, 255, 255, 0.26);
+  border: 1px solid rgba(255, 255, 255, 0.36);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.4);
 
   :global {
     dt {
@@ -265,16 +296,17 @@ export default {
     }
 
     dd {
-      background-color: var(--color-primary-light-1000);
-      border-radius: 12px;
+      background-color: rgba(255, 255, 255, 0.72);
+      border-radius: 16px;
       padding: 20px;
       margin-bottom: 20px;
-      box-shadow: 0 4px 16px rgba(0, 0, 0, 0.03);
-      border: 1px solid rgba(0, 0, 0, 0.02);
-      transition: box-shadow 0.3s ease;
+      box-shadow: 0 8px 22px rgba(0, 0, 0, 0.04);
+      border: 1px solid rgba(255, 255, 255, 0.45);
+      transition: box-shadow 0.22s ease, transform 0.22s ease;
 
       &:hover {
-        box-shadow: 0 8px 24px rgba(0, 0, 0, 0.06);
+        box-shadow: 0 12px 26px rgba(0, 0, 0, 0.06);
+        transform: translateY(-1px);
       }
 
       > div {

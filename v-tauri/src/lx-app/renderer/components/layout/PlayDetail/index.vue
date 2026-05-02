@@ -1,5 +1,5 @@
 <template lang="pug">
-transition(enter-active-class="animated slideInRight" leave-active-class="animated slideOutDown" @after-enter="handleAfterEnter" @after-leave="handleAfterLeave")
+transition(enter-active-class="animated-fast fadeIn" leave-active-class="animated-fast fadeOut" @after-enter="handleAfterEnter" @after-leave="handleAfterLeave")
   div(v-if="isShowPlayerDetail" :class="[$style.container, { fullscreen: isFullscreen }]" @contextmenu="handleContextMenu")
     div(:class="$style.bg")
     //- div(:class="$style.bg" :style="bgStyle")
@@ -16,12 +16,12 @@ transition(enter-active-class="animated slideInRight" leave-active-class="animat
             p {{ $t('player__music_singer') }}{{ musicInfo.singer }}
             p(v-if="musicInfo.album") {{ $t('player__music_album') }}{{ musicInfo.album }}
 
-      transition(enter-active-class="animated fadeIn" leave-active-class="animated fadeOut")
+      transition(enter-active-class="animated-fast fadeIn" leave-active-class="animated-fast fadeOut")
         LyricPlayer(v-if="visibled")
       music-comment(v-if="visibled" :class="$style.comment" :show="isShowPlayComment" :music-info="playMusicInfo.musicInfo" @close="hideComment")
-    transition(enter-active-class="animated fadeIn" leave-active-class="animated fadeOut")
+    transition(enter-active-class="animated-fast fadeIn" leave-active-class="animated-fast fadeOut")
       play-bar(v-if="visibled")
-    transition(enter-active-class="animated-slow fadeIn" leave-active-class="animated-slow fadeOut")
+    transition(enter-active-class="animated-fast fadeIn" leave-active-class="animated-fast fadeOut")
       common-audio-visualizer(v-if="appSetting['player.audioVisualization'] && visibled")
 </template>
 
@@ -145,7 +145,7 @@ export default {
   top: 0;
   left: 0;
   background-color: var(--color-content-background);
-  z-index: 10;
+  z-index: 30;
   // -webkit-app-region: drag;
   overflow: hidden;
   border-radius: @radius-border;
@@ -168,26 +168,17 @@ export default {
   left: 0;
   background: var(--background-image) var(--background-image-position) no-repeat;
   background-size: var(--background-image-size);
-  // background-size: 110% 110%;
-  // filter: blur(60px);
-  opacity: .7;
   z-index: -1;
   &:before {
     content: '';
-    display: block;
-    width: 100%;
-    height: 100%;
-    background-color: var(--color-app-background);
-  }
-  &:after {
     position: absolute;
     left: 0;
     top: 0;
-    content: '';
-    display: block;
     width: 100%;
     height: 100%;
     background-color: var(--color-main-background);
+    backdrop-filter: blur(12px) saturate(125%);
+    -webkit-backdrop-filter: blur(12px) saturate(125%);
   }
 }
 // .bg2 {
@@ -250,9 +241,9 @@ export default {
   max-width: 100%;
   max-height: 80%;
   min-width: 100%;
-  box-shadow: 0 0 6px var(--color-primary-alpha-500);
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.08);
   border-radius: 6px;
-  opacity: .8;
+  opacity: .92;
 }
 .description {
   max-width: 300px;

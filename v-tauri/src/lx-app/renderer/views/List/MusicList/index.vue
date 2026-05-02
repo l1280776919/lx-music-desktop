@@ -88,14 +88,14 @@
     </div>
     <common-list-add-modal
       v-model:show="isShowListAdd" :is-move="isMove" :from-list-id="listId"
-      :music-info="selectedAddMusicInfo" :exclude-list-id="excludeListIds" teleport="#view"
+      :music-info="selectedAddMusicInfo" :exclude-list-id="excludeListIds" teleport="#overlay-root"
     />
     <common-list-add-multiple-modal
       v-model:show="isShowListAddMultiple" :from-list-id="listId"
-      :is-move="isMoveMultiple" :music-list="selectedList" :exclude-list-id="excludeListIds" teleport="#view" @confirm="removeAllSelect"
+      :is-move="isMoveMultiple" :music-list="selectedList" :exclude-list-id="excludeListIds" teleport="#overlay-root" @confirm="removeAllSelect"
     />
-    <common-download-modal v-model:show="isShowDownload" :music-info="selectedDownloadMusicInfo" teleport="#view" :list-id="listId" />
-    <common-download-multiple-modal v-model:show="isShowDownloadMultiple" :list="selectedList" teleport="#view" :list-id="listId" @confirm="removeAllSelect" />
+    <common-download-modal v-model:show="isShowDownload" :music-info="selectedDownloadMusicInfo" teleport="#overlay-root" :list-id="listId" />
+    <common-download-multiple-modal v-model:show="isShowDownloadMultiple" :list="selectedList" teleport="#overlay-root" :list-id="listId" @confirm="removeAllSelect" />
     <search-list :list="list" :visible="isShowSearchBar" @action="handleMusicSearchAction" />
     <music-sort-modal v-model:show="isShowMusicSortModal" :music-info="selectedSortMusicInfo" :selected-num="selectedNum" @confirm="sortMusic" />
     <music-toggle-modal v-model:show="isShowMusicToggleModal" :music-info="selectedToggleMusicInfo" @toggle="toggleSource" />
@@ -369,6 +369,12 @@ export default {
   flex: auto;
   display: flex;
   flex-flow: column nowrap;
+  min-width: 0;
+  min-height: 0;
+  border-radius: 22px;
+  background-color: rgba(255, 255, 255, 0.22);
+  border: 1px solid rgba(255, 255, 255, 0.32);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.38);
 
   :global(.list-item) {
     &.active {
@@ -376,6 +382,23 @@ export default {
     }
   }
   :global {
+    .thead {
+      margin: 14px 14px 0;
+      padding: 0 12px;
+      border-radius: 16px;
+      background-color: rgba(255, 255, 255, 0.52);
+      border: 1px solid rgba(255, 255, 255, 0.4);
+      box-shadow: 0 6px 18px rgba(0, 0, 0, 0.04);
+    }
+    .thead table {
+      width: 100%;
+    }
+    .thead th {
+      height: 42px;
+      color: var(--color-font-label);
+      font-size: 12px;
+      font-weight: 600;
+    }
     .label-source {
       color: var(--color-primary);
       padding: 5px;
@@ -412,6 +435,7 @@ export default {
   display: flex;
   flex-flow: column nowrap;
   flex: auto;
+  padding: 12px 14px 14px;
 }
 
 .noItem {
@@ -429,3 +453,4 @@ export default {
 }
 
 </style>
+

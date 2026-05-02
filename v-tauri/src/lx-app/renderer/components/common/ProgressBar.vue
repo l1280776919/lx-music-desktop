@@ -99,7 +99,7 @@ export default {
   overflow: hidden;
   transition: @transition-normal;
   transition-property: background-color;
-  background-color: var(--color-primary-light-100-alpha-800);
+  background-color: var(--color-primary-light-100-alpha-400);
   position: relative;
   border-radius: 40px;
 }
@@ -120,11 +120,11 @@ export default {
   transform-origin: 0;
 }
 .progressBar1 {
-  background-color: var(--color-primary-light-100-alpha-600);
+  background-color: var(--color-primary-light-100-alpha-800);
 }
 
 .progressBar2 {
-  background-color: var(--color-primary-light-100-alpha-400);
+  background-color: var(--color-primary-light-100-alpha-800);
   will-change: transform;
 }
 

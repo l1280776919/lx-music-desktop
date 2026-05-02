@@ -89,8 +89,12 @@ export default {
 
 .leaderboard {
   height: 100%;
+  min-height: 0;
   display: flex;
   position: relative;
+  gap: 14px;
+  padding: 16px 18px 18px;
+  box-sizing: border-box;
 }
 .header {
   flex: none;
@@ -115,9 +119,15 @@ export default {
 
 .lists {
   flex: none;
-  width: 14.8%;
+  width: clamp(180px, 15.5%, 220px);
   display: flex;
   flex-flow: column nowrap;
+  min-height: 0;
+  border-radius: 18px;
+  background-color: rgba(255, 255, 255, 0.38);
+  border: 1px solid rgba(255, 255, 255, 0.42);
+  box-shadow: 0 10px 24px rgba(0, 0, 0, 0.04);
+  overflow: hidden;
 }
 .listsHeader {
   position: relative;
@@ -137,12 +147,13 @@ export default {
     width: 100%;
   }
   :global(.label-content) {
-    background-color: transparent !important;
+    background-color: rgba(255, 255, 255, 0.4) !important;
     line-height: 38px;
     height: 38px;
-    border-radius: 0;
+    border-radius: 14px;
+    margin: 10px;
     &:hover {
-      background: none !important;
+      background: rgba(255, 255, 255, 0.62) !important;
     }
   }
   :global(.label) {
@@ -155,16 +166,16 @@ export default {
 
   :global(.selection-list) {
     max-height: 500px;
-    box-shadow: 0 1px 8px 0 rgba(0,0,0,.2);
+    box-shadow: 0 10px 24px rgba(0, 0, 0, .08);
+    border-radius: 14px;
     li {
-      // background-color: var(--color-main-background);
       line-height: 38px;
       font-size: 13px;
       &:hover {
-        background-color: var(--color-button-background-hover);
+        background-color: rgba(255, 255, 255, 0.75);
       }
       &:active {
-        background-color: var(--color-button-background-active);
+        background-color: rgba(255, 255, 255, 0.9);
       }
     }
   }
@@ -178,9 +189,14 @@ export default {
   position: relative;
   overflow: hidden;
   height: 100%;
+  min-height: 0;
   flex: auto;
   display: flex;
   flex-flow: column nowrap;
+  border-radius: 22px;
+  background-color: rgba(255, 255, 255, 0.24);
+  border: 1px solid rgba(255, 255, 255, 0.34);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.36);
   // .noItem {
 
   // }

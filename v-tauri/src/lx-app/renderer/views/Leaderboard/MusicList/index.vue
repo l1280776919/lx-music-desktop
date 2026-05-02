@@ -61,9 +61,9 @@ defineExpose({ hideMenu })
 
 <style lang="less" module>
 .container {
-  position: absolute;
-  left: 0;
-  top: 0;
+  position: relative;
+  min-height: 0;
+  flex: auto;
   width: 100%;
   height: 100%;
 }

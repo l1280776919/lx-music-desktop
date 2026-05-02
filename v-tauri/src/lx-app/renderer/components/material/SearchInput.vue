@@ -4,9 +4,7 @@
       <div :class="$style.form">
         <button type="button" @click="handleSearch" :class="$style.searchBtn">
           <slot>
-            <svg version="1.1" xmlns="http://www.w3.org/2000/svg" xlink="http://www.w3.org/1999/xlink" height="100%" viewBox="0 0 30.239 30.239" space="preserve">
-              <use xlink:href="#icon-search" />
-            </svg>
+            <Search :size="16" stroke-width="2.5" />
           </slot>
         </button>
         <input
@@ -18,6 +16,7 @@
           @input="$emit('update:modelValue', text)"
           @change="sendEvent('change')"
           @keyup.enter="handleSearch"
+          @keyup.esc="hideList"
           @keydown.arrow-down.arrow-up.prevent
           @keyup.arrow-down.prevent="handleKeyDown"
           @keyup.arrow-up.prevent="handleKeyUp"
@@ -25,9 +24,7 @@
         >
         <transition enter-active-class="animated zoomIn" leave-active-class="animated zoomOut">
           <button v-show="text" type="button" @click="handleClearList" :class="$style.clearBtn">
-            <svg version="1.1" xmlns="http://www.w3.org/2000/svg" xlink="http://www.w3.org/1999/xlink" height="100%" viewBox="0 0 24 24" space="preserve">
-              <use xlink:href="#icon-window-close" />
-            </svg>
+            <X :size="14" stroke-width="2.5" />
           </button>
         </transition>
       </div>
@@ -52,8 +49,10 @@
 import { clipboardReadText } from '@common/utils/electron'
 import { HOTKEY_COMMON } from '@common/hotKey'
 import { appSetting } from '@renderer/store/setting'
+import { Search, X } from 'lucide-vue-next'
 
 export default {
+  components: { Search, X },
   props: {
     placeholder: {
       type: String,
@@ -203,7 +202,8 @@ export default {
 
 .container {
   position: relative;
-  width: 35%;
+  width: clamp(260px, 38%, 460px);
+  max-width: 100%;
   height: @height-toolbar * 0.52;
   -webkit-app-region: no-drag;
 }
@@ -212,16 +212,16 @@ export default {
   position: absolute;
   width: 100%;
   border-radius: 20px;
-  transition: all .4s cubic-bezier(0.2, 0.8, 0.2, 1);
+  transition: background-color .25s ease, border-color .25s ease, box-shadow .25s ease;
   display: flex;
   flex-flow: column nowrap;
   background-color: var(--color-primary-light-100-alpha-800);
   border: 1px solid transparent;
 
   &.active {
-    background-color: var(--color-primary-light-1000);
-    box-shadow: 0 8px 24px 0 rgba(0,0,0,.08);
-    border-color: var(--color-primary-alpha-400);
+    background-color: var(--color-main-background);
+    box-shadow: 0 8px 20px 0 rgba(0, 0, 0, .06);
+    border-color: var(--color-primary-alpha-300);
     .form {
       input {
         border-bottom-left-radius: 0;
@@ -273,14 +273,14 @@ export default {
       padding: 8px 8px 8px 12px;
       border-top-left-radius: 20px;
       border-bottom-left-radius: 20px;
-      svg { width: 14px; height: 14px; }
+      svg { width: 14px; height: 14px; fill: none; stroke: currentColor; }
     }
     
     .clearBtn {
       padding: 8px 12px 8px 8px;
       border-top-right-radius: 20px;
       border-bottom-right-radius: 20px;
-      svg { width: 12px; height: 12px; }
+      svg { width: 12px; height: 12px; fill: none; stroke: currentColor; }
     }
   }
   .list {

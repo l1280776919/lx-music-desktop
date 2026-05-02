@@ -1,5 +1,5 @@
 <template>
-  <material-modal :show="visible" teleport="#view" bg-close @close="closeModal" @after-leave="handleAfterLeave">
+  <material-modal :show="visible" teleport="#overlay-root" bg-close @close="closeModal" @after-leave="handleAfterLeave">
     <main class="scroll" :class="$style.main">
       <div :class="$style.header">
         <h2>{{ listName }}</h2>
@@ -207,3 +207,4 @@ export default {
 
 
 </style>
+

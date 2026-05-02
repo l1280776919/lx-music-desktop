@@ -1,5 +1,5 @@
 <template>
-  <material-modal :show="modelValue" max-height="90%" teleport="#view" @close="handleCancel">
+  <material-modal :show="modelValue" max-height="90%" teleport="#overlay-root" @close="handleCancel">
     <main :class="$style.main">
       <h2>{{ themeId ? $t('theme_edit_modal__title_edit') : $t('theme_edit_modal__title_add') }}</h2>
       <div class="scroll" :class="$style.content">
@@ -803,3 +803,4 @@ export default {
 }
 
 </style>
+

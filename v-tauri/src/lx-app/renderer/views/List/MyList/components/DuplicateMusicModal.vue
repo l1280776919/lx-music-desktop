@@ -1,5 +1,5 @@
 <template>
-  <material-modal :show="visible" bg-close teleport="#view" width="60%" max-width="900px" @close="$emit('update:visible', false)">
+  <material-modal :show="visible" bg-close teleport="#overlay-root" width="60%" max-width="900px" @close="$emit('update:visible', false)">
     <div :class="$style.header">
       <h2>{{ listName }}</h2>
     </div>
@@ -242,3 +242,4 @@ export default {
 }
 
 </style>
+

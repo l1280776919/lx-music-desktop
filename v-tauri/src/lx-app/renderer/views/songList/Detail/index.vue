@@ -169,26 +169,36 @@ export default {
   // height: 100%;
   display: flex;
   flex-flow: column nowrap;
+  min-height: 0;
+  padding: 16px 18px 18px;
+  gap: 14px;
+  box-sizing: border-box;
 }
 
 .songListHeader {
   flex: none;
   display: flex;
   flex-flow: row nowrap;
-  height: 80px;
+  align-items: center;
+  gap: 18px;
+  min-height: 110px;
+  padding: 16px 18px;
+  border-radius: 22px;
+  background-color: rgba(255, 255, 255, 0.26);
+  border: 1px solid rgba(255, 255, 255, 0.36);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.38);
 }
 .songListHeaderLeft {
   flex: none;
-  margin-left: 15px;
-  height: 100%;
-  aspect-ratio: 1 / 1;
+  width: 86px;
+  height: 86px;
   position: relative;
   overflow: hidden;
-  border-radius: 4px;
+  border-radius: 18px;
   background-position: center;
   background-size: cover;
-  opacity: .9;
-  box-shadow: 0 0 2px 0 rgba(0,0,0,.2);
+  opacity: .95;
+  box-shadow: 0 10px 28px rgba(0,0,0,.12);
 }
 .playNum {
   position: absolute;
@@ -205,18 +215,19 @@ export default {
 
 .songListHeaderMiddle {
   flex: auto;
-  padding: 2px 7px;
+  padding: 0;
   min-width: 0;
   h3 {
     .mixin-ellipsis-1();
-    line-height: 1.2;
-    padding-bottom: 5px;
+    line-height: 1.3;
+    padding-bottom: 8px;
     color: var(--color-font);
+    font-size: 20px;
   }
   p {
     .mixin-ellipsis(3);
-    font-size: 12px;
-    line-height: 1.2;
+    font-size: 13px;
+    line-height: 1.5;
     color: var(--color-font-label);
   }
 }
@@ -224,17 +235,15 @@ export default {
   flex: none;
   display: flex;
   align-items: center;
-  padding-right: 15px;
+  gap: 10px;
 
   .headerRightBtn {
-    border-radius: 0;
-    &:first-child {
-      border-top-left-radius: 4px;
-      border-bottom-left-radius: 4px;
-    }
-    &:last-child {
-      border-top-right-radius: 4px;
-      border-bottom-right-radius: 4px;
+    border-radius: 14px !important;
+    background: rgba(255, 255, 255, 0.46) !important;
+    border-color: rgba(255, 255, 255, 0.42) !important;
+    min-width: 88px;
+    &:hover {
+      background: rgba(255, 255, 255, 0.72) !important;
     }
   }
 }
@@ -245,6 +254,11 @@ export default {
   min-height: 0;
   flex: auto;
   height: 100%;
+  border-radius: 22px;
+  overflow: hidden;
+  background-color: rgba(255, 255, 255, 0.22);
+  border: 1px solid rgba(255, 255, 255, 0.32);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.36);
 }
 </style>
 

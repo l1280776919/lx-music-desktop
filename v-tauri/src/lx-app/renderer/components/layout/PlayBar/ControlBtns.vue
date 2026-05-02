@@ -2,17 +2,11 @@
   <div :class="$style.controlBtn">
     <!-- <common-volume-bar /> -->
     <button :class="$style.titleBtn" :aria-label="$t('player__add_music_to')" @click="addMusicTo">
-      <svg version="1.1" xmlns="http://www.w3.org/2000/svg" xlink="http://www.w3.org/1999/xlink" width="90%" viewBox="0 0 512 512" space="preserve">
-        <use xlink:href="#icon-add-2" />
-      </svg>
+      <Plus :size="20" stroke-width="2.5" />
     </button>
     <button :class="$style.titleBtn" :aria-label="toggleDesktopLyricBtnTitle" @click="toggleDesktopLyric" @contextmenu="toggleLockDesktopLyric">
-      <svg v-show="appSetting['desktopLyric.enable']" version="1.1" xmlns="http://www.w3.org/2000/svg" xlink="http://www.w3.org/1999/xlink" height="100%" viewBox="0 0 512 512" space="preserve">
-        <use xlink:href="#icon-desktop-lyric-on" />
-      </svg>
-      <svg v-show="!appSetting['desktopLyric.enable']" version="1.1" xmlns="http://www.w3.org/2000/svg" xlink="http://www.w3.org/1999/xlink" height="100%" viewBox="0 0 512 512" space="preserve">
-        <use xlink:href="#icon-desktop-lyric-off" />
-      </svg>
+      <Mic2 v-show="appSetting['desktopLyric.enable']" :size="20" stroke-width="2.5" />
+      <Mic v-show="!appSetting['desktopLyric.enable']" :size="20" stroke-width="2.5" />
     </button>
     <common-volume-btn />
     <common-toggle-play-mode-btn />
@@ -25,8 +19,10 @@ import { ref } from '@common/utils/vueTools'
 import useToggleDesktopLyric from '@renderer/utils/compositions/useToggleDesktopLyric'
 import { musicInfo, playMusicInfo } from '@renderer/store/player/state'
 import { appSetting } from '@renderer/store/setting'
+import { Plus, Mic, Mic2 } from 'lucide-vue-next'
 
 export default {
+  components: { Plus, Mic, Mic2 },
   setup() {
     const isShowAddMusicTo = ref(false)
     const {
@@ -91,6 +87,8 @@ export default {
 
   svg {
     filter: drop-shadow(0 0 1px rgba(0, 0, 0, 0.2));
+    fill: none;
+    stroke: currentColor;
   }
   &:hover {
     opacity: 1;

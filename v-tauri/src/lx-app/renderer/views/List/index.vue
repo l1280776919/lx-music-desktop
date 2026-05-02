@@ -65,8 +65,12 @@ export default {
 .container {
   overflow: hidden;
   height: 100%;
+  min-height: 0;
   display: flex;
   position: relative;
+  gap: 14px;
+  padding: 16px 18px 18px;
+  box-sizing: border-box;
 }
 
 </style>

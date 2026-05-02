@@ -124,28 +124,41 @@ export default {
   display: flex;
   flex-flow: column nowrap;
   position: relative;
+  min-height: 0;
+  padding: 16px 18px 18px;
+  gap: 14px;
+  box-sizing: border-box;
 }
 .header {
   flex: none;
   width: 100%;
   display: flex;
   flex-flow: row nowrap;
-  // padding-right: 5px;
-  // box-sizing: border-box;
-  padding-bottom: 5px;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 14px;
+  border-radius: 20px;
+  background-color: rgba(255, 255, 255, 0.28);
+  border: 1px solid rgba(255, 255, 255, 0.36);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.38);
 }
 .left {
   flex: auto;
   display: flex;
   flex-flow: row nowrap;
+  min-width: 0;
+  gap: 8px;
 }
 
 .btn {
   color: var(--color-font);
   transition: color @transition-fast;
-  background: none !important;
+  background: rgba(255, 255, 255, 0.42) !important;
+  border-radius: 12px !important;
+  border-color: rgba(255, 255, 255, 0.4) !important;
   &:hover {
     color: var(--color-primary-font-hover);
+    background: rgba(255, 255, 255, 0.68) !important;
   }
 }
 
@@ -165,18 +178,16 @@ export default {
 
   :global {
     .label-content {
-      background-color: transparent !important;
+      background-color: rgba(255, 255, 255, 0.42) !important;
       transition: color @transition-fast;
       color: var(--color-font);
-      // line-height: 38px;
-      // height: 38px;
-      border-radius: 0;
+      border-radius: 12px;
+      padding: 0 12px;
       &:hover {
-        // background: none !important;
+        background-color: rgba(255, 255, 255, 0.68) !important;
         color: var(--color-primary-font-hover);
         .icon {
           opacity: 1;
-          // color: var(--color-primary-font-hover);
         }
       }
     }
@@ -194,17 +205,17 @@ export default {
 
     .selection-list {
       max-height: 500px;
-      box-shadow: 0 1px 4px 0 rgba(0,0,0,.2);
+      box-shadow: 0 10px 24px rgba(0, 0, 0, .08);
+      border-radius: 14px;
       li {
-        // background-color: var(--color-main-background);
         text-align: center;
         line-height: 38px;
         font-size: 13px;
         &:hover {
-          background-color: var(--color-button-background-hover);
+          background-color: rgba(255, 255, 255, 0.75);
         }
         &:active {
-          background-color: var(--color-button-background-active);
+          background-color: rgba(255, 255, 255, 0.9);
         }
       }
     }

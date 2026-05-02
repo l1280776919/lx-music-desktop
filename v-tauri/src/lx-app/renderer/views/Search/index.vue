@@ -21,41 +21,12 @@ import { sources as _sources } from '@renderer/store/search/music'
 import MusicList from './MusicList/index.vue'
 import SongListList from './SongListList/index.vue'
 import BlankView from './components/BlankView.vue'
-import { computed, ref } from '@common/utils/vueTools'
+import { computed, ref, watch } from '@common/utils/vueTools'
 import { sourceNames } from '@renderer/store'
 
 const source = ref('kw')
 const searchType = ref(null)
 const page = ref(1)
-
-const verifyQueryParams = async(to, from, next) => {
-  let _source = to.query.source
-  let _type = to.query.type
-  let _page = to.query.page
-
-  if (_source == null || _type == null) {
-    const setting = await getSearchSetting()
-    _source ??= setting.source
-    _type ??= setting.type
-
-    next({
-      path: to.path,
-      query: { ...to.query, source: _source, type: _type, page: _page },
-    })
-    return
-  }
-  source.value = _source
-  searchType.value = _type
-
-  if (_page) page.value = parseInt(_page)
-
-  if (to.query.text != null) {
-    searchText.value = to.query.text
-    if (!_page) page.value = 1
-  }
-  next()
-  void setSearchSetting({ source: _source, type: _type })
-}
 
 export default {
   components: {
@@ -63,11 +34,40 @@ export default {
     SongListList,
     BlankView,
   },
-  beforeRouteEnter: verifyQueryParams,
-  beforeRouteUpdate: verifyQueryParams,
   setup() {
     const route = useRoute()
     const router = useRouter()
+
+    watch(() => route.query, async(query) => {
+      let nextSource = typeof query.source == 'string' ? query.source : null
+      let nextType = typeof query.type == 'string' ? query.type : null
+      const nextText = typeof query.text == 'string' ? query.text : ''
+      const nextPage = Number.parseInt(`${query.page ?? 1}`, 10) || 1
+
+      if (nextSource == null || nextType == null) {
+        const setting = await getSearchSetting()
+        nextSource ??= setting.source
+        nextType ??= setting.type
+        await router.replace({
+          path: route.path,
+          query: {
+            ...query,
+            source: nextSource,
+            type: nextType,
+            page: nextPage,
+          },
+        })
+        return
+      }
+
+      source.value = nextSource
+      searchType.value = nextType
+      page.value = nextPage
+      if (searchText.value !== nextText) searchText.value = nextText
+      void setSearchSetting({ source: nextSource, type: nextType })
+    }, {
+      immediate: true,
+    })
 
     const sources = _sources.map(id => {
       return {
@@ -76,6 +76,7 @@ export default {
       }
     })
     const handleSourceChange = (id) => {
+      if (source.value == id && page.value == 1) return
       void router.replace({
         path: route.path,
         query: {
@@ -93,6 +94,7 @@ export default {
       ]
     })
     const handleTypeChange = (type) => {
+      if (searchType.value == type && page.value == 1) return
       void router.replace({
         path: route.path,
         query: {
@@ -124,6 +126,8 @@ export default {
 .container {
   display: flex;
   flex-flow: column nowrap;
+  height: 100%;
+  min-height: 0;
 }
 
 .header {
@@ -136,7 +140,9 @@ export default {
 
 .main {
   position: relative;
+  display: flex;
   flex: auto;
-  // min-height: 0;
+  min-height: 0;
+  overflow: hidden;
 }
 </style>

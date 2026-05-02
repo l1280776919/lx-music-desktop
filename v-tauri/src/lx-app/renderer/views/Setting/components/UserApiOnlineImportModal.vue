@@ -1,5 +1,5 @@
 <template>
-  <material-modal :show="show" teleport="#view" @close="handleClose" @after-enter="$refs.input.focus()">
+  <material-modal :show="show" teleport="#overlay-root" @close="handleClose" @after-enter="$refs.input.focus()">
     <main :class="$style.main">
       <h2>{{ $t('user_api_import_online__title') }}</h2>
       <base-input
@@ -131,3 +131,4 @@ export default {
 
 
 </style>
+

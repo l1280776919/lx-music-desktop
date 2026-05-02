@@ -1,16 +1,23 @@
 <template>
-  <div :class="[$style.toolbar, { [$style.fullscreen]: isFullscreen }, appSetting['common.controlBtnPosition'] == 'left' ? $style.controlBtnLeft : $style.controlBtnRight]">
-    <SearchInput />
+  <div :class="[$style.toolbar, { [$style.fullscreen]: isFullscreen }, appSetting['common.controlBtnPosition'] == 'left' ? $style.controlBtnLeft : $style.controlBtnRight]" @dblclick="handleToolbarDblclick">
+    <div :class="$style.leading">
+      <SearchInput />
+    </div>
     <div v-if="appSetting['common.controlBtnPosition'] == 'left'" :class="$style.logo">L X</div>
-    <ControlBtns v-else />
+    <div v-else :class="$style.safeZone" />
   </div>
 </template>
 
 <script setup>
 import { isFullscreen } from '@renderer/store'
 import { appSetting } from '@renderer/store/setting'
-import ControlBtns from './ControlBtns.vue'
+import { minMaxWindowToggle } from '@renderer/utils/ipc'
 import SearchInput from './SearchInput.vue'
+
+const handleToolbarDblclick = () => {
+  if (isFullscreen.value) return
+  minMaxWindowToggle()
+}
 
 </script>
 
@@ -19,11 +26,12 @@ import SearchInput from './SearchInput.vue'
 @import '@renderer/assets/styles/layout.less';
 
 .toolbar {
-  display: flex;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto auto;
   height: @height-toolbar;
   align-items: center;
-  justify-content: space-between;
-  padding-left: 15px;
+  gap: 12px;
+  padding: 0 16px;
   -webkit-app-region: drag;
   z-index: 2;
   background-color: transparent;
@@ -43,21 +51,33 @@ import SearchInput from './SearchInput.vue'
       display: none;
     }
   }
-  &.controlBtnRight {
-    justify-content: space-between;
-  }
+  // &.controlBtnRight {
+  //   justify-content: space-between;
+  // }
+}
+
+.leading {
+  min-width: 0;
+  display: flex;
+  align-items: center;
 }
 
 .logo {
   box-sizing: border-box;
-  padding: 0 @height-toolbar * .4;
+  padding: 0 8px;
   height: @height-toolbar;
   color: var(--color-primary);
   flex: none;
   text-align: center;
   line-height: @height-toolbar;
   font-weight: bold;
-  // -webkit-app-region: no-drag;
+  justify-self: end;
+}
+
+.safeZone {
+  width: var(--window-controls-safe-width, 112px);
+  height: 100%;
+  flex: none;
 }
 
 </style>
